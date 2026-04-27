@@ -1,0 +1,80 @@
+# ข้อมูลการเข้าถึง Swagger และขั้นตอนการทำงานของ API
+
+## 🌐 Swagger UI
+สามารถเข้าใช้งาน Swagger เพื่อดู API Documentation ได้ที่:
+**URL:** [http://localhost:3000/api](http://localhost:3000/api)
+
+---
+
+## 🔄 ขั้นตอนการเรียกใช้ข้อมูล API (API Workflow)
+สรุปขั้นตอนจาก Flowchart "ขั้นตอนการเรียกใช้ข้อมูล API":
+
+### 1. API Get Token (การขอ Token)
+*   **Action:** Front-end ส่ง `username` และ `password`
+*   **Backend:** ตรวจสอบความถูกต้อง
+    *   ✅ **ถูกต้อง:** Return `200 OK` + `Token`
+    *   ❌ **ไม่ถูกต้อง:** Return `401`
+
+### 2. API Create api-key (การสร้าง API Key)
+*   **Action:** Front-end ส่ง Request พร้อมแนบ `Token` ใน Header
+*   **Backend:** ตรวจสอบความถูกต้องของ Token
+    *   ✅ **ถูกต้อง:** Return `200 OK` + `Token`
+    *   ❌ **ไม่ถูกต้อง:** Return `401`
+
+### 3. API Get Data (การดึงข้อมูล)
+*   **Backend Logic:**
+    1.  **ตรวจสอบ Token:** หากไม่มีสิทธิ์/Token ไม่ถูกต้อง Return `403 Forbidden`
+    2.  **Authorization Check:** ตรวจสอบสิทธิ์การเข้าถึงข้อมูล
+    3.  **Query Database:** ทำการดึงข้อมูลจากฐานข้อมูล
+*   **ผลลัพธ์:**
+    *   ✅ **พบข้อมูล:** Return `200 OK` + `Json data`
+    *   ❌ **ไม่พบข้อมูล:** Return `400 Not Found` (ตาม Diagram)
+
+---
+
+## 🚀 ตัวอย่างการใช้งานจริง (Usage Examples)
+
+### 1. ล็อกอินผ่าน SSO (เพื่อเอา Token)
+**Endpoint:** `GET /auth/sso/login`
+*   **Browser:** `http://localhost:3000/auth/sso/login?user=eform01&pass=57FB023138E362AEB8F080B8ABA78F68B9B41B33`
+*   **Curl:**
+    ```bash
+    curl "http://localhost:3000/auth/sso/login?user=eform01&pass=57FB023138E362AEB8F080B8ABA78F68B9B41B33"
+    ```
+
+### 2. ตรวจสอบสถานะ Token
+**Endpoint:** `GET /auth/sso/verify`
+*   **Browser:** `http://localhost:3000/auth/sso/verify?token=YOUR_TOKEN_HERE`
+*   **Curl:**
+    ```bash
+    curl "http://localhost:3000/auth/sso/verify?token=YOUR_TOKEN_HERE"
+    ```
+
+### 3. ดึงข้อมูลสินค้า (ต้องใช้ Token)
+**Endpoint:** `GET /products`
+*   **Browser:** `http://localhost:3000/products?token=YOUR_TOKEN_HERE`
+*   **Curl:**
+    ```bash
+    curl "http://localhost:3000/products?token=YOUR_TOKEN_HERE"
+    ```
+
+---
+
+## 🛠️ สรุปการใช้ Decorators (ใช้อะไร ที่ไหน?)
+
+| ประเภท | Decorator ที่ใช้ | ไฟล์ที่ต้องเขียน | หน้าที่ |
+| :--- | :--- | :--- | :--- |
+| **โครงสร้าง** | `@Module`, `@Injectable` | `.module.ts`, `.service.ts` | นิยามระบบและคนทำงาน |
+| **เส้นทาง (Route)** | `@Controller`, `@Get`, `@Post` | `.controller.ts` | กำหนด URL และช่องทางการรับข้อมูล |
+| **รับข้อมูล** | `@Query`, `@Param`, `@Body` | `.controller.ts` | ดึงข้อมูลจากลูกค้ามาใส่ตัวแปร |
+| **คู่มือ API** | `@ApiTags`, `@ApiOperation` | `.controller.ts` | ตกแต่งหน้า Swagger (หมวดหมู่/คำอธิบาย) |
+| **สเปคข้อมูล** | `@ApiProperty`, `@IsString` | `.dto.ts` | อธิบายหน้าตา JSON และตัวอย่างข้อมูล |
+
+### 💡 ตัวอย่างการวางตำแหน่ง:
+1.  **บนหัว Class (Controller)**: ใช้ `@ApiTags('...')`
+2.  **บนหัวฟังก์ชัน (Controller)**: ใช้ `@Get()`, `@ApiOperation({ ... })`
+3.  **ในวงเล็บฟังก์ชัน (Controller)**: ใช้ `@Query('...')`, `@Body()`
+4.  **ใน Class DTO**: ใช้ `@ApiProperty({ ... })`
+
+---
+*บันทึกอัปเดตคู่มือ Decorator: 2026-04-27*

@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { SsoAuthData, SsoBaseResponse } from './interfaces/sso-response.interface';
+import { SsoAuthData, SsoBaseResponse, SsoAuthResponseDto } from './interfaces/sso-response.interface';
 import { BaseApiService } from 'src/common/services/base-api.service';
 import { FncDB } from 'src/common/services/fnc-db.service';
 
@@ -22,29 +22,55 @@ export class AuthService extends BaseApiService {
   /**
    * 1. ฟังก์ชันล็อกอิน SSO
    */
-  async login(username: string, password: string): Promise<SsoAuthData> {
+  async login(username: string, password: string): Promise<SsoAuthResponseDto> {
     const loginUrl = `${this.ssoBaseUrl}/auth2/`;
     const options = { params: { user: username, pass: password } };
 
     try {
-      // เรียก API และดึงค่าที่จำเป็นออกมาใช้งานทันที (Destructuring)
       const { result_code, result_text, result_data } =
         await this.get<SsoBaseResponse<SsoAuthData>>(loginUrl, options);
 
-      await this.syncUser(result_data);
-
-      // ตรวจสอบ Error จากฝั่ง SSO Logic
       if (result_code !== '1000') {
         const errorMsg = result_text || 'Username หรือ Password ไม่ถูกต้อง';
         this.logger.warn(`SSO Login Reject: ${errorMsg}`);
         throw new UnauthorizedException(errorMsg);
       }
 
-      return result_data;
+      await this.syncUser(result_data);
+
+      const users = await this.db.select<SsoAuthResponseDto>('user_sso', { userid: result_data.userid, is_active: 1 });
+
+      if (users.length === 0) {
+        throw new UnauthorizedException('บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน');
+      }
+
+      const u = users[0];
+      return {
+        userid: u.userid,
+        username: u.username,
+        token: u.token,
+        idcard_no: u.idcard_no,
+        email: u.email,
+        prefix_name: u.prefix_name,
+        firstname: u.firstname,
+        lastname: u.lastname,
+        work_position_text: u.work_position_text,
+        work_place_text: u.work_place_text,
+        work_place_id: u.work_place_id,
+        work_place_name: u.work_place_name,
+        work_place_type_id: u.work_place_type_id,
+        work_place_type_name: u.work_place_type_name,
+        division_id: u.division_id,
+        division_name: u.division_name,
+        sub_division_id: u.sub_division_id,
+        sub_division_name: u.sub_division_name,
+        last_login: u.last_login,
+        remark: u.remark,
+        is_active: u.is_active
+      };
 
     } catch (err: any) {
       if (err instanceof UnauthorizedException) throw err;
-
       this.logger.error(`Login Process Error: ${err.message}`);
       throw new BadRequestException('ไม่สามารถเข้าสู่ระบบผ่าน SSO ได้ในขณะนี้');
     }
@@ -53,7 +79,7 @@ export class AuthService extends BaseApiService {
   /**
    * 2. ฟังก์ชันตรวจสอบ Token
    */
-  async verify(token: string): Promise<SsoAuthData> {
+  async verify(token: string): Promise<SsoAuthResponseDto> {
     const verifyUrl = `${this.ssoBaseUrl}/verify2`;
     const options = { params: { token } };
 
@@ -65,11 +91,39 @@ export class AuthService extends BaseApiService {
         throw new UnauthorizedException('Token ไม่ถูกต้องหรือหมดอายุแล้ว');
       }
 
-      return result_data;
+      const users = await this.db.select<SsoAuthResponseDto>('user_sso', { userid: result_data.userid, is_active: 1 });
+
+      if (users.length === 0) {
+        throw new UnauthorizedException('บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน');
+      }
+
+      const u = users[0];
+      return {
+        userid: u.userid,
+        username: u.username,
+        token: u.token,
+        idcard_no: u.idcard_no,
+        email: u.email,
+        prefix_name: u.prefix_name,
+        firstname: u.firstname,
+        lastname: u.lastname,
+        work_position_text: u.work_position_text,
+        work_place_text: u.work_place_text,
+        work_place_id: u.work_place_id,
+        work_place_name: u.work_place_name,
+        work_place_type_id: u.work_place_type_id,
+        work_place_type_name: u.work_place_type_name,
+        division_id: u.division_id,
+        division_name: u.division_name,
+        sub_division_id: u.sub_division_id,
+        sub_division_name: u.sub_division_name,
+        last_login: u.last_login,
+        remark: u.remark,
+        is_active: u.is_active
+      };
 
     } catch (err: any) {
       if (err instanceof UnauthorizedException) throw err;
-
       this.logger.error(`Verify Token Error: ${err.message}`);
       throw new BadRequestException('ไม่สามารถตรวจสอบสถานะ Token ได้');
     }

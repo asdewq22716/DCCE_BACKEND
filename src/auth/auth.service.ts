@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { SsoAuthData, SsoBaseResponse, SsoVerifyData } from './interfaces/sso-response.interface';
+import { SsoAuthData, SsoBaseResponse } from './interfaces/sso-response.interface';
 import { BaseApiService } from 'src/common/services/base-api.service';
 import { FncDB } from 'src/common/services/fnc-db.service';
 
@@ -53,13 +53,13 @@ export class AuthService extends BaseApiService {
   /**
    * 2. ฟังก์ชันตรวจสอบ Token
    */
-  async verify(token: string): Promise<SsoVerifyData> {
+  async verify(token: string): Promise<SsoAuthData> {
     const verifyUrl = `${this.ssoBaseUrl}/verify2`;
     const options = { params: { token } };
 
     try {
       const { result_code, result_data } =
-        await this.get<SsoBaseResponse<SsoVerifyData>>(verifyUrl, options);
+        await this.get<SsoBaseResponse<SsoAuthData>>(verifyUrl, options);
 
       if (result_code !== '1000') {
         throw new UnauthorizedException('Token ไม่ถูกต้องหรือหมดอายุแล้ว');

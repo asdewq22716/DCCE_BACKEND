@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { AllExceptionsFilter, TransformInterceptor } from './common/global-response';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,6 +22,10 @@ async function bootstrap() {
     forbidNonWhitelisted: true,    // ถ้าส่งฟิลด์แปลกปลอมมา ให้ Error กลับไปเลย
     transform: true,               // ช่วยแปลง Type ให้โดยอัตโนมัติ
   }));
+
+  // 3. จัดการรูปแบบ Response และ Error ทั่วทั้งระบบ
+  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalInterceptors(new TransformInterceptor());
 
   await app.listen(process.env.PORT ?? 3000);
 }

@@ -26,13 +26,3 @@ export interface SsoAuthData {
   sub_division_name: string;  // ชื่อส่วน/กลุ่มงาน
 }
 
-export interface SsoVerifyData {
-  token: string;
-  userid: string;
-  username: string;
-  firstname: string;
-  lastname: string;
-  email: string;
-  division_name: string;
-  work_place_name: string;
-}

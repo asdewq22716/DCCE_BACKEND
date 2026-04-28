@@ -52,3 +52,55 @@
 
 ---
 *บันทึกไว้สำหรับย้ายไปใช้งานที่เครื่องหลัก - ขอให้สนุกกับการเขียน NestJS ครับ!*
+
+---
+
+## 🗄️ Database Schema Design (RBAC)
+
+ลำดับ | ชื่อตาราง | หน้าที่หลัก | ฟิลด์ที่จำเป็น (Fields)
+:--- | :--- | :--- | :---
+1 | **Organizations** | เก็บโครงสร้าง ส่วนงาน > กรม | `id, name, parent_id, type`
+2 | **Users** | ข้อมูลผู้ใช้งาน | `id, username, full_name, org_id (FK), user_type, is_active, last_login, sso_*`
+3 | **Roles** | ตำแหน่ง/บทบาทงาน | `id, role_name, description`
+4 | **Permissions** | นิยามสิทธิ์ (กุญแจ) | `id, p_key, p_label, p_group`
+5 | **UserRoles** | ใครนั่งตำแหน่งไหน | `user_id, role_id`
+6 | **RolePermissions** | ตำแหน่งนี้มีสิทธิ์อะไร | `role_id, permission_id`
+7 | **UserPermissions** | สิทธิ์พิเศษรายบุคคล | `user_id, permission_id, expired_at, remark`
+
+---
+
+## 🔍 วิเคราะห์: `user_sso` vs `Users`
+
+จากการวิเคราะห์โครงสร้างปัจจุบันและที่ออกแบบใหม่ พบว่ามีความสัมพันธ์กันดังนี้:
+
+### 1. สามารถใช้แทนกันได้หรือไม่?
+**คำตอบ: ควรยุบรวมกัน (Merge)**
+ในระบบปัจจุบัน `user_sso` ทำหน้าที่เป็นตารางเก็บข้อมูลผู้ใช้งานหลักที่ Sync มาจาก SSO อยู่แล้ว ดังนั้นควรใช้ตาราง `Users` เป็นตัวหลักเพียงตารางเดียว เพื่อลดความซ้ำซ้อนของข้อมูล (Data Redundancy)
+
+### 2. ฟิลด์ที่ควรเพิ่มหรือปรับปรุง
+หากจะเปลี่ยนจาก `user_sso` มาเป็น `Users` ควรมีโครงสร้างดังนี้:
+
+- **ฟิลด์จาก SSO ที่ต้องรักษาไว้:**
+  - `id` (ใช้ `userid` จาก SSO เป็น Primary Key)
+  - `username`
+  - `email`, `prefix_name`, `firstname`, `lastname` (สำหรับออกเอกสาร)
+  - `is_active`, `last_login` (สำหรับตรวจสอบสถานะการใช้งาน)
+
+- **ฟิลด์ที่ต้องเพิ่มตามที่ออกแบบใหม่:**
+  - `org_id` (FK): เชื่อมไปยังตาราง `Organizations` (โดย Mapping จาก `work_place_id` หรือ `division_id` ของ SSO)
+  - `user_type`: เพื่อแยกระหว่างบุคคลภายใน (Internal) และภายนอก (External)
+  - `full_name`: สามารถเก็บเป็นฟิลด์เดี่ยว หรือใช้ Virtual Field จาก `firstname + lastname` ก็ได้
+
+### 3. ข้อเสนอแนะการจัดการ Organization
+ตาราง `Organizations` ควรถูกออกแบบให้รองรับ Hierarchy โดยใช้ `parent_id` ซึ่งสามารถ Map ข้อมูลจาก SSO ได้ดังนี้:
+- `work_place_id` -> กรม/หน่วยงานหลัก
+- `division_id` -> กอง/ส่วน
+- `sub_division_id` -> ฝ่าย/กลุ่มงาน
+
+การทำเช่นนี้จะทำให้ระบบ RBAC มีความยืดหยุ่นสูงและจัดการสิทธิ์ตามโครงสร้างองค์กรได้แม่นยำครับ
+
+---
+
+## 📄 SQL Scripts
+สามารถดูคำสั่ง SQL สำหรับสร้าง Table ทั้งหมดได้ที่: [schema.sql](file:///e:/git/Newdice/DCCE/DCCE_BACKEND/sql/schema.sql)
+

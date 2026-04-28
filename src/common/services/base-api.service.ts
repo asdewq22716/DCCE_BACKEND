@@ -7,20 +7,57 @@ import { firstValueFrom } from 'rxjs';
 export class BaseApiService {
   protected readonly logger = new Logger(BaseApiService.name);
 
-  constructor(protected readonly httpService: HttpService) {}
+  constructor(protected readonly httpService: HttpService) { }
 
   /**
-   * ฟังก์ชันส่งคำขอแบบ GET (อ่านง่าย และจัดการ Error ในตัว)
+   * Hook สำหรับให้ Class ลูก (เช่น AuthService) ส่ง Header/Config พื้นฐานเข้ามาได้
    */
-  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  protected getDefaultConfig(): AxiosRequestConfig {
+    return {}; // ค่าตั้งต้นคือว่างเปล่า ให้ Class ลูกไป Override เอาเอง
+  }
+
+  /**
+   * ฟังก์ชันแกนกลางสำหรับยิง API ทุกรูปแบบ (GET, POST, PUT, DELETE)
+   */
+  protected async request<T>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig,
+  ): Promise<T> {
     try {
-      // 1. ยิง API และรอรับข้อมูล
-      const response = await firstValueFrom(this.httpService.get<T>(url, config));
+      // รวม Config มาตรฐานของ Class เข้ากับ Config ที่ส่งมาเฉพาะกิจ
+      const finalConfig: AxiosRequestConfig = {
+        ...this.getDefaultConfig(),
+        ...config,
+        method,
+        url,
+        data,
+      };
+
+      const response = await firstValueFrom(this.httpService.request<T>(finalConfig));
       return response.data;
     } catch (error) {
-      // 2. ถ้าเกิดปัญหา ส่งไปให้ตัวจัดการ Error
       this.handleApiError(error);
     }
+  }
+
+  // --- Helper Methods เพื่อให้เรียกใช้งานได้ง่ายๆ ---
+
+  async get<T>({ url, config }: { url: string; config?: AxiosRequestConfig }): Promise<T> {
+    return this.request<T>('GET', url, undefined, config);
+  }
+
+  async post<T>({ url, data, config }: { url: string; data?: any; config?: AxiosRequestConfig }): Promise<T> {
+    return this.request<T>('POST', url, data, config);
+  }
+
+  async put<T>({ url, data, config }: { url: string; data?: any; config?: AxiosRequestConfig }): Promise<T> {
+    return this.request<T>('PUT', url, data, config);
+  }
+
+  async delete<T>({ url, config }: { url: string; config?: AxiosRequestConfig }): Promise<T> {
+    return this.request<T>('DELETE', url, undefined, config);
   }
 
   /**

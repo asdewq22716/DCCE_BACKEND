@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { SsoAuthData, SsoBaseResponse, SsoAuthResponseDto } from './interfaces/sso-response.interface';
 import { BaseApiService } from 'src/common/services/base-api.service';
 import { FncDB } from 'src/common/services/fnc-db.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService extends BaseApiService {
@@ -12,7 +13,8 @@ export class AuthService extends BaseApiService {
   constructor(
     httpService: HttpService,
     protected readonly configService: ConfigService,
-    private readonly db: FncDB
+    private readonly db: FncDB,
+    private readonly jwtService: JwtService,
   ) {
     super(httpService);
     // ดึงค่า URL จาก .env
@@ -20,15 +22,31 @@ export class AuthService extends BaseApiService {
   }
 
   /**
+   * แอบฝัง Header / Token ไปกับทุกๆ การยิง API ภายใน AuthService
+   */
+  protected override getDefaultConfig() {
+    //const appName = this.configService.get<string>('SSO_APP_NAME');
+    return {
+      headers: {}
+    };
+  }
+
+  public getCookieWithJwtToken(userId: string | number, username: string) {
+    const payload = { sub: userId, username };
+    const token = this.jwtService.sign(payload);
+    return token;
+  }
+
+  /**
    * 1. ฟังก์ชันล็อกอิน SSO
    */
   async login(username: string, password: string): Promise<SsoAuthResponseDto> {
-    const loginUrl = `${this.ssoBaseUrl}/auth2/`;
-    const options = { params: { user: username, pass: password } };
-
     try {
       const { result_code, result_text, result_data } =
-        await this.get<SsoBaseResponse<SsoAuthData>>(loginUrl, options);
+        await this.get<SsoBaseResponse<SsoAuthData>>({
+          url: `${this.ssoBaseUrl}/auth2/`,
+          config: { params: { user: username, pass: password } }
+        });
 
       if (result_code !== '1000') {
         const errorMsg = result_text || 'Username หรือ Password ไม่ถูกต้อง';
@@ -36,38 +54,21 @@ export class AuthService extends BaseApiService {
         throw new UnauthorizedException(errorMsg);
       }
 
+      // Sync ข้อมูลลงตาราง users ใหม่
       await this.syncUser(result_data);
 
-      const users = await this.db.select<SsoAuthResponseDto>('user_sso', { userid: result_data.userid, is_active: 1 });
+      // ตรวจสอบสิทธิ์การเข้าใช้งานจากตาราง users (is_active = 1) ด้วย FncDB 🚀
+      const users = await this.db.select<any>('users', {
+        sso_userid: result_data.userid,
+        is_active: 1
+      });
 
       if (users.length === 0) {
         throw new UnauthorizedException('บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน');
       }
 
       const u = users[0];
-      return {
-        userid: u.userid,
-        username: u.username,
-        token: u.token,
-        idcard_no: u.idcard_no,
-        email: u.email,
-        prefix_name: u.prefix_name,
-        firstname: u.firstname,
-        lastname: u.lastname,
-        work_position_text: u.work_position_text,
-        work_place_text: u.work_place_text,
-        work_place_id: u.work_place_id,
-        work_place_name: u.work_place_name,
-        work_place_type_id: u.work_place_type_id,
-        work_place_type_name: u.work_place_type_name,
-        division_id: u.division_id,
-        division_name: u.division_name,
-        sub_division_id: u.sub_division_id,
-        sub_division_name: u.sub_division_name,
-        last_login: u.last_login,
-        remark: u.remark,
-        is_active: u.is_active
-      };
+      return this.mapUserToResponse(u);
 
     } catch (err: any) {
       if (err instanceof UnauthorizedException) throw err;
@@ -80,47 +81,28 @@ export class AuthService extends BaseApiService {
    * 2. ฟังก์ชันตรวจสอบ Token
    */
   async verify(token: string): Promise<SsoAuthResponseDto> {
-    const verifyUrl = `${this.ssoBaseUrl}/verify2`;
-    const options = { params: { token } };
+
 
     try {
       const { result_code, result_data } =
-        await this.get<SsoBaseResponse<SsoAuthData>>(verifyUrl, options);
+        await this.get<SsoBaseResponse<SsoAuthData>>(
+          {
+            url: `${this.ssoBaseUrl}/verify2`,
+            config: { params: { token } }
+          });
 
       if (result_code !== '1000') {
         throw new UnauthorizedException('Token ไม่ถูกต้องหรือหมดอายุแล้ว');
       }
 
-      const users = await this.db.select<SsoAuthResponseDto>('user_sso', { userid: result_data.userid, is_active: 1 });
+      const users = await this.db.select<any>('users', { sso_userid: result_data.userid, is_active: 1 });
 
       if (users.length === 0) {
         throw new UnauthorizedException('บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน');
       }
 
       const u = users[0];
-      return {
-        userid: u.userid,
-        username: u.username,
-        token: u.token,
-        idcard_no: u.idcard_no,
-        email: u.email,
-        prefix_name: u.prefix_name,
-        firstname: u.firstname,
-        lastname: u.lastname,
-        work_position_text: u.work_position_text,
-        work_place_text: u.work_place_text,
-        work_place_id: u.work_place_id,
-        work_place_name: u.work_place_name,
-        work_place_type_id: u.work_place_type_id,
-        work_place_type_name: u.work_place_type_name,
-        division_id: u.division_id,
-        division_name: u.division_name,
-        sub_division_id: u.sub_division_id,
-        sub_division_name: u.sub_division_name,
-        last_login: u.last_login,
-        remark: u.remark,
-        is_active: u.is_active
-      };
+      return this.mapUserToResponse(u);
 
     } catch (err: any) {
       if (err instanceof UnauthorizedException) throw err;
@@ -129,45 +111,101 @@ export class AuthService extends BaseApiService {
     }
   }
 
+
+
+  /**
+   * 3. ฟังก์ชัน Sync ข้อมูลจาก SSO ลงตาราง users
+   */
   private async syncUser(data: SsoAuthData) {
-    const table = 'user_sso';
+    const table = 'users';
 
     // 1. ตรวจสอบว่ามี User นี้อยู่หรือยัง
-    const users = await this.db.select(table, { userid: data.userid });
-
-    // เตรียมข้อมูลที่จะบันทึก (จัดกลุ่มไว้จะได้อ่านง่ายครับ)
-    const userData = {
-      username: data.username,
-      token: data.token,
-      idcard_no: data.idcard_no,
-      email: data.email,
-      prefix_name: data.prefix_name,
-      firstname: data.firstname,
-      lastname: data.lastname,
-      work_position_text: data.work_position_text,
-      work_place_text: data.work_place_text,
-      work_place_id: data.work_place_id,
-      work_place_name: data.work_place_name,
-      work_place_type_id: data.work_place_type_id,
-      work_place_type_name: data.work_place_type_name,
-      division_id: data.division_id,
-      division_name: data.division_name,
-      sub_division_id: data.sub_division_id,
-      sub_division_name: data.sub_division_name,
-      last_login: new Date() // อัปเดตเวลาล็อกอินปัจจุบัน
-    };
+    const users = await this.db.select(table, { sso_userid: data.userid });
 
     if (users.length > 0) {
-      // 2. ถ้ามีแล้ว -> UPDATE ข้อมูล (ค้นหาด้วย userid)
-      this.logger.log(`Update user: ${data.username}`);
-      await this.db.update(table, userData, { userid: data.userid });
+      // 1. กรณี Update: ข้อมูลที่ต้องปรับปรุงทุกครั้งที่ Login (ไม่แตะต้อง is_active)
+      const updateData = {
+        sso_username: data.username,
+        sso_token: data.token,
+        sso_idcard_no: data.idcard_no,
+        sso_email: data.email,
+        sso_prefix_name: data.prefix_name,
+        sso_firstname: data.firstname,
+        sso_lastname: data.lastname,
+        sso_work_position_text: data.work_position_text,
+        sso_work_place_text: data.work_place_text,
+        sso_work_place_id: data.work_place_id,
+        sso_work_place_name: data.work_place_name,
+        sso_work_place_type_id: data.work_place_type_id,
+        sso_work_place_type_name: data.work_place_type_name,
+        sso_division_id: data.division_id,
+        sso_division_name: data.division_name,
+        sso_sub_division_id: data.sub_division_id,
+        sso_sub_division_name: data.sub_division_name,
+        full_name: `${data.prefix_name || ''}${data.firstname} ${data.lastname}`.trim(),
+        last_login: new Date()
+      };
+
+      this.logger.log(`Update user profile: ${data.username}`);
+      await this.db.update(table, updateData, { sso_userid: data.userid });
+
     } else {
-      // 3. ถ้ายังไม่มี -> INSERT ข้อมูลใหม่
+      // 2. กรณี Insert: ข้อมูลเริ่มต้นสำหรับผู้ใช้งานใหม่
+      const insertData = {
+        sso_userid: data.userid,
+        sso_username: data.username,
+        sso_token: data.token,
+        sso_idcard_no: data.idcard_no,
+        sso_email: data.email,
+        sso_prefix_name: data.prefix_name,
+        sso_firstname: data.firstname,
+        sso_lastname: data.lastname,
+        sso_work_position_text: data.work_position_text,
+        sso_work_place_text: data.work_place_text,
+        sso_work_place_id: data.work_place_id,
+        sso_work_place_name: data.work_place_name,
+        sso_work_place_type_id: data.work_place_type_id,
+        sso_work_place_type_name: data.work_place_type_name,
+        sso_division_id: data.division_id,
+        sso_division_name: data.division_name,
+        sso_sub_division_id: data.sub_division_id,
+        sso_sub_division_name: data.sub_division_name,
+        full_name: `${data.prefix_name || ''}${data.firstname} ${data.lastname}`.trim(),
+        last_login: new Date(),
+        is_active: 1 // ตั้งค่าเริ่มต้นเป็น 1 เฉพาะตอนสร้างใหม่
+      };
+
       this.logger.log(`Insert new user: ${data.username}`);
-      // สำหรับ Insert อย่าลืมใส่ userid เข้าไปด้วยนะครับ
-      await this.db.insert(table, { userid: data.userid, ...userData });
+      await this.db.insert(table, insertData);
     }
   }
 
-
+  /**
+   * Helper สำหรับแปลงข้อมูลจากตาราง users กลับเป็น DTO สำหรับ Response
+   */
+  private mapUserToResponse(u: any): SsoAuthResponseDto {
+    return {
+      userid: u.sso_userid,
+      username: u.sso_username,
+      token: u.sso_token,
+      idcard_no: u.sso_idcard_no,
+      email: u.sso_email,
+      prefix_name: u.sso_prefix_name,
+      firstname: u.sso_firstname,
+      lastname: u.sso_lastname,
+      work_position_text: u.sso_work_position_text,
+      work_place_text: u.sso_work_place_text,
+      work_place_id: u.sso_work_place_id,
+      work_place_name: u.sso_work_place_name,
+      work_place_type_id: u.sso_work_place_type_id,
+      work_place_type_name: u.sso_work_place_type_name,
+      division_id: u.sso_division_id,
+      division_name: u.sso_division_name,
+      sub_division_id: u.sso_sub_division_id,
+      sub_division_name: u.sso_sub_division_name,
+      last_login: u.last_login,
+      remark: u.remark,
+      is_active: u.is_active
+    };
+  }
 }

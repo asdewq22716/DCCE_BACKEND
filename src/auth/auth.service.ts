@@ -5,6 +5,7 @@ import { SsoAuthData, SsoBaseResponse, SsoAuthResponseDto } from './interfaces/s
 import { BaseApiService } from 'src/common/services/base-api.service';
 import { FncDB } from 'src/common/services/fnc-db.service';
 import { JwtService } from '@nestjs/jwt';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService extends BaseApiService {
@@ -31,8 +32,8 @@ export class AuthService extends BaseApiService {
     };
   }
 
-  public getCookieWithJwtToken(userId: string | number, username: string) {
-    const payload = { sub: userId, username };
+  public getCookieWithJwtToken(data: JwtPayload) {
+    const payload = { sub: data.userId, username: data.username };
     const token = this.jwtService.sign(payload);
     return token;
   }
@@ -81,8 +82,6 @@ export class AuthService extends BaseApiService {
    * 2. ฟังก์ชันตรวจสอบ Token
    */
   async verify(token: string): Promise<SsoAuthResponseDto> {
-
-
     try {
       const { result_code, result_data } =
         await this.get<SsoBaseResponse<SsoAuthData>>(
@@ -118,7 +117,6 @@ export class AuthService extends BaseApiService {
    */
   private async syncUser(data: SsoAuthData) {
     const table = 'users';
-
     // 1. ตรวจสอบว่ามี User นี้อยู่หรือยัง
     const users = await this.db.select(table, { sso_userid: data.userid });
 
@@ -185,26 +183,26 @@ export class AuthService extends BaseApiService {
    */
   private mapUserToResponse(u: any): SsoAuthResponseDto {
     return {
-      userid: u.sso_userid,
-      username: u.sso_username,
-      token: u.sso_token,
-      idcard_no: u.sso_idcard_no,
-      email: u.sso_email,
-      prefix_name: u.sso_prefix_name,
-      firstname: u.sso_firstname,
-      lastname: u.sso_lastname,
-      work_position_text: u.sso_work_position_text,
-      work_place_text: u.sso_work_place_text,
-      work_place_id: u.sso_work_place_id,
-      work_place_name: u.sso_work_place_name,
-      work_place_type_id: u.sso_work_place_type_id,
-      work_place_type_name: u.sso_work_place_type_name,
-      division_id: u.sso_division_id,
-      division_name: u.sso_division_name,
-      sub_division_id: u.sso_sub_division_id,
-      sub_division_name: u.sso_sub_division_name,
+      user_id: u.user_id,
+      sso_userid: u.sso_userid,
+      sso_username: u.sso_username,
+      sso_token: u.sso_token,
+      sso_idcard_no: u.sso_idcard_no,
+      sso_email: u.sso_email,
+      sso_prefix_name: u.sso_prefix_name,
+      sso_firstname: u.sso_firstname,
+      sso_lastname: u.sso_lastname,
+      sso_work_position_text: u.sso_work_position_text,
+      sso_work_place_text: u.sso_work_place_text,
+      sso_work_place_id: u.sso_work_place_id,
+      sso_work_place_name: u.sso_work_place_name,
+      sso_work_place_type_id: u.sso_work_place_type_id,
+      sso_work_place_type_name: u.sso_work_place_type_name,
+      sso_division_id: u.sso_division_id,
+      sso_division_name: u.sso_division_name,
+      sso_sub_division_id: u.sso_sub_division_id,
+      sso_sub_division_name: u.sso_sub_division_name,
       last_login: u.last_login,
-      remark: u.remark,
       is_active: u.is_active
     };
   }

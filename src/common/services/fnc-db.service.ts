@@ -6,7 +6,7 @@ import { PgPoolService } from './pg-pool.service';
 export class FncDB {
   private readonly logger = new Logger(FncDB.name);
 
-  constructor(private readonly pgPool: PgPoolService) {}
+  constructor(private readonly pgPool: PgPoolService) { }
 
   // ---------- Transaction Handling ----------
 
@@ -77,11 +77,11 @@ export class FncDB {
     const columns = keys.map(k => `"${k}"`).join(', ');
 
     const sql = `INSERT INTO "${table}" (${columns}) VALUES (${placeholders}) RETURNING *`;
-    
-    const rows = client 
+
+    const rows = client
       ? await this.queryTx(client, sql, values)
       : await this.query(sql, values);
-    
+
     return rows[0];
   }
 
@@ -92,17 +92,17 @@ export class FncDB {
   async update(table: string, data: Record<string, any>, where: Record<string, any>, client?: PoolClient): Promise<number> {
     const updateKeys = Object.keys(data);
     const updateValues = Object.values(data);
-    
+
     const setClause = updateKeys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
     const { clause: whereClause, values: whereValues } = this.buildWhereClause(where, updateKeys.length + 1);
 
     const sql = `UPDATE "${table}" SET ${setClause} WHERE ${whereClause}`;
     const allValues = [...updateValues, ...whereValues];
 
-    const result = client 
+    const result = client
       ? await client.query(sql, allValues)
       : await this.pgPool.pool.query(sql, allValues);
-    
+
     return result.rowCount || 0;
   }
 
@@ -114,10 +114,10 @@ export class FncDB {
     const { clause, values } = this.buildWhereClause(where);
     const sql = `DELETE FROM "${table}" WHERE ${clause}`;
 
-    const result = client 
+    const result = client
       ? await client.query(sql, values)
       : await this.pgPool.pool.query(sql, values);
-    
+
     return result.rowCount || 0;
   }
 
@@ -125,7 +125,7 @@ export class FncDB {
     const keys = Object.keys(where);
     const values = Object.values(where);
     const clause = keys.map((k, i) => `"${k}" = $${startIndex + i}`).join(' AND ');
-    
+
     return {
       clause,
       values,

@@ -23,8 +23,8 @@ export class ProductsService {
 
     // 2. ถ้าผ่าน ให้แสดงข้อมูลสินค้า (Mock Data)
     return [
-      { id: 1, name: 'รองเท้าวิ่ง', price: 1500, description: 'ใส่สบาย ทนทาน', owner: userData.userid },
-      { id: 2, name: 'กระเป๋าเป้', price: 850, description: 'จุของได้เยอะ', owner: userData.userid },
+      { id: 1, name: 'รองเท้าวิ่ง', price: 1500, description: 'ใส่สบาย ทนทาน', owner: userData.sso_username },
+      { id: 2, name: 'กระเป๋าเป้', price: 850, description: 'จุของได้เยอะ', owner: userData.sso_username },
     ];
   }
 

@@ -137,3 +137,13 @@ export class SsoAuthResponseDto extends SsoAuthDataReturn {
   is_active: 0 | 1;
 }
 
+export class TypeRoles {
+  @ApiProperty({ description: 'รหัสสิทธิ์' })
+  role_id: number;
+
+  @ApiProperty({ description: 'ชื่อสิทธิ์' })
+  role_name: string;
+
+  @ApiProperty({ description: 'รายละเอียดสิทธิ์' })
+  description: string;
+}

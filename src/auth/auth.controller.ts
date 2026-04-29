@@ -5,7 +5,7 @@ import { AuthService } from './auth.service';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SsoLoginDto } from './dto/sso-login.dto';
 import { SsoVerifyDto } from './dto/sso-verify.dto';
-import { SsoAuthResponseDto } from './interfaces/sso-response.interface';
+import { SsoAuthResponseDto, TypeRoles } from './interfaces/sso-response.interface';
 import { UsersService } from 'src/users/users.service';
 
 @ApiTags('Authentication')
@@ -20,7 +20,7 @@ export class AuthController {
   async login(
     @Body() dto: SsoLoginDto,
     @Res({ passthrough: true }) res: Response
-  ): Promise<{ user: SsoAuthResponseDto, roles: any[] }> {
+  ): Promise<{ user: SsoAuthResponseDto, roles: TypeRoles[] }> {
     const user_data = await this.authService.login(dto.user, dto.pass);
     const { user, roles } = await this.usersService.getUserById(user_data.user_id);
     const token = this.authService.getCookieWithJwtToken({ userId: user.user_id, username: user.sso_username });
@@ -36,11 +36,15 @@ export class AuthController {
   async verify(
     @Body() dto: SsoVerifyDto,
     @Res({ passthrough: true }) res: Response
-  ): Promise<SsoAuthResponseDto> {
-    const user = await this.authService.verify(dto.token);
+  ): Promise<{ user: SsoAuthResponseDto, roles: TypeRoles[] }> {
+    const user_data = await this.authService.verify(dto.token);
+    const { user, roles } = await this.usersService.getUserById(user_data.user_id);
     const token = this.authService.getCookieWithJwtToken({ userId: user.user_id, username: user.sso_username });
     res.cookie('access_token', token, { httpOnly: true });
-    return user;
+    return {
+      user: user,
+      roles: roles
+    };
   }
 
   @Post('sso/logout')

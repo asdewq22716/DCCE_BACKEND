@@ -41,8 +41,7 @@ export class UsersService {
       throw new Error('User not found');
     }
     const roles = await this.getUserRoleByUserId(userId);
-    const permissions = await this.permissionsService.getEffectivePermissions(userId);
-
+    
     return {
       user: {
         user_id: users[0].user_id,
@@ -68,8 +67,7 @@ export class UsersService {
         is_active: users[0].is_active,
         last_login: users[0].last_login,
       },
-      roles: roles,
-      permissions: permissions
+      roles: roles
     };
   }
 }

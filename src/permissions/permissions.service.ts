@@ -25,14 +25,18 @@ export class PermissionsService {
       `SELECT p.*, pg.group_name 
        FROM permissions p
        LEFT JOIN permission_groups pg ON p.group_id = pg.group_id
+       WHERE p.is_active = 1
        ORDER BY pg.sort_order ASC, pg.group_name ASC, p.p_label ASC`
     );
   }
 
   async deletePermission(permissionId: number) {
-    const deleted = await this.db.delete('permissions', { permission_id: permissionId });
-    if (deleted === 0) throw new NotFoundException('ไม่พบสิทธิ์ที่ต้องการลบ');
-    return { message: 'ลบสิทธิ์เรียบร้อยแล้ว' };
+    const updated = await this.db.update('permissions', 
+      { is_active: 0 }, 
+      { permission_id: permissionId }
+    );
+    if (updated === 0) throw new NotFoundException('ไม่พบสิทธิ์ที่ต้องการลบ');
+    return { message: 'ลบสิทธิ์เรียบร้อยแล้ว (Soft Delete)' };
   }
 
   // ---------- Permission Groups Management ----------
@@ -47,16 +51,19 @@ export class PermissionsService {
   }
 
   async getAllGroups() {
-    return await this.db.query('SELECT * FROM permission_groups ORDER BY sort_order ASC, group_name ASC');
+    return await this.db.query('SELECT * FROM permission_groups WHERE is_active = 1 ORDER BY sort_order ASC, group_name ASC');
   }
 
   async deleteGroup(groupId: number) {
-    // เช็คก่อนว่ามีสิทธิ์ภายใต้กลุ่มนี้ไหม
-    const perms = await this.db.select('permissions', { group_id: groupId });
+    // เช็คก่อนว่ามีสิทธิ์ที่ยังใช้งานอยู่ภายใต้กลุ่มนี้ไหม
+    const perms = await this.db.select('permissions', { group_id: groupId, is_active: 1 });
     if (perms.length > 0) throw new BadRequestException('ไม่สามารถลบกลุ่มที่มีสิทธิ์การใช้งานอยู่ได้');
 
-    const deleted = await this.db.delete('permission_groups', { group_id: groupId });
-    if (deleted === 0) throw new NotFoundException('ไม่พบกลุ่มที่ต้องการลบ');
-    return { message: 'ลบกลุ่มสิทธิ์เรียบร้อยแล้ว' };
+    const updated = await this.db.update('permission_groups', 
+      { is_active: 0 }, 
+      { group_id: groupId }
+    );
+    if (updated === 0) throw new NotFoundException('ไม่พบกลุ่มที่ต้องการลบ');
+    return { message: 'ลบกลุ่มสิทธิ์เรียบร้อยแล้ว (Soft Delete)' };
   }
 }

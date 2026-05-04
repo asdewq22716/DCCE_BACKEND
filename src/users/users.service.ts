@@ -41,7 +41,7 @@ export class UsersService {
       throw new Error('User not found');
     }
     const roles = await this.getUserRoleByUserId(userId);
-    
+
     return {
       user: {
         user_id: users[0].user_id,

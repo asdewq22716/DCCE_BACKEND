@@ -8,6 +8,14 @@ import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // เปิดใช้งาน CORS
+  app.enableCors({
+    origin: true, // อนุญาตทุก Origin หรือระบุ URL ของ Frontend
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true, // อนุญาตให้ส่ง Cookie
+  });
+
   app.use(cookieParser());
 
   // Setup Swagger

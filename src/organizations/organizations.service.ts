@@ -166,35 +166,6 @@ export class OrganizationsService {
     }
   }
 
-  async findUnitsByBranch(branchId: number) {
-    // ตรวจสอบก่อนว่าตัวสาขาแม่มีตัวตนจริงหรือไม่
-    await this.findOneOrg(branchId);
-
-    try {
-      return await this.db.query(
-        `SELECT 
-             o.org_id, 
-             o.org_name, 
-             o.parent_id,
-             o.created_at,
-             o.updated_at,
-             o.sort_order,
-             COALESCE(COUNT(uo.user_id), 0)::int AS user_count
-           FROM organizations o
-           LEFT JOIN user_organizations uo ON o.org_id = uo.org_id
-           WHERE o.parent_id = $1
-           GROUP BY o.org_id, o.org_name, o.parent_id, o.created_at, o.updated_at, o.sort_order
-           ORDER BY o.sort_order ASC, o.org_id ASC`,
-        [branchId],
-      );
-    } catch (err: any) {
-      this.logger.error(`Find units by branch error: ${err.message}`);
-      throw new BadRequestException(
-        'ไม่สามารถดึงข้อมูลรายชื่อหน่วยงานภายใต้สาขาได้',
-      );
-    }
-  }
-
   // 5. แก้ไขข้อมูลสาขาหรือหน่วยงานย่อย
   async updateOrg(id: number, dto: UpdateOrgDto) {
     await this.findOneOrg(id);

@@ -42,14 +42,6 @@ export class OrganizationsController {
   }
 
 
-  @Get('branches/units/:branchId')
-  @ApiOperation({
-    summary: 'ดึงรายชื่อหน่วยงานย่อยภายใต้สาขาหลัก พร้อมจำนวนผู้ใช้จริง',
-  })
-  findUnitsByBranch(@Param('branchId', ParseIntPipe) branchId: number) {
-    return this.organizationsService.findUnitsByBranch(branchId);
-  }
-
   @Get(':id')
   @ApiOperation({ summary: 'ดึงข้อมูลหน่วยงาน/สาขาตาม ID' })
   findOneOrg(@Param('id', ParseIntPipe) id: number) {

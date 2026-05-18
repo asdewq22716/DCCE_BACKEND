@@ -1,11 +1,22 @@
-import { Body, Controller, Post, Res, Get, UseGuards, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Res,
+  Get,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SsoLoginDto } from './dto/sso-login.dto';
 import { SsoVerifyDto } from './dto/sso-verify.dto';
-import { SsoAuthResponseDto, TypeRoles } from './interfaces/sso-response.interface';
+import {
+  SsoAuthResponseDto,
+  TypeRoles,
+} from './interfaces/sso-response.interface';
 import { UsersService } from 'src/users/users.service';
 
 @ApiTags('Authentication')
@@ -13,21 +24,26 @@ import { UsersService } from 'src/users/users.service';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly usersService: UsersService
-  ) { }
+    private readonly usersService: UsersService,
+  ) {}
   @Post('sso/login')
   @ApiOperation({ summary: 'SSO Login using credentials' })
   async login(
     @Body() dto: SsoLoginDto,
-    @Res({ passthrough: true }) res: Response
-  ): Promise<{ user: SsoAuthResponseDto, roles: TypeRoles[] }> {
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ user: SsoAuthResponseDto; roles: TypeRoles[] }> {
     const user_data = await this.authService.login(dto.user, dto.pass);
-    const { user, roles } = await this.usersService.getUserById(user_data.user_id);
-    const token = this.authService.getCookieWithJwtToken({ userId: user.user_id, username: user.sso_username });
+    const { user, roles } = await this.usersService.getUserById(
+      user_data.user_id,
+    );
+    const token = this.authService.getCookieWithJwtToken({
+      userId: user.user_id,
+      username: user.sso_username,
+    });
     res.cookie('access_token', token, { httpOnly: true });
     return {
       user: user,
-      roles: roles
+      roles: roles,
     };
   }
 
@@ -35,15 +51,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Verify SSO Token' })
   async verify(
     @Body() dto: SsoVerifyDto,
-    @Res({ passthrough: true }) res: Response
-  ): Promise<{ user: SsoAuthResponseDto, roles: TypeRoles[] }> {
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ user: SsoAuthResponseDto; roles: TypeRoles[] }> {
     const user_data = await this.authService.verify(dto.token);
-    const { user, roles } = await this.usersService.getUserById(user_data.user_id);
-    const token = this.authService.getCookieWithJwtToken({ userId: user.user_id, username: user.sso_username });
+    const { user, roles } = await this.usersService.getUserById(
+      user_data.user_id,
+    );
+    const token = this.authService.getCookieWithJwtToken({
+      userId: user.user_id,
+      username: user.sso_username,
+    });
     res.cookie('access_token', token, { httpOnly: true });
     return {
       user: user,
-      roles: roles
+      roles: roles,
     };
   }
 
@@ -60,7 +81,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user profile (Protected API)' })
   getProfile(@Req() req: any) {
     // ถ้ายาม (Guard) ตรวจผ่าน จะเอาข้อมูลใน Token มาใส่ไว้ใน req.user ให้เราใช้งานต่อ
-    console.log("=== ข้อมูลใน req.user ===");
+    console.log('=== ข้อมูลใน req.user ===');
     console.log(req.user);
     return {
       message: 'ยินดีด้วย คุณผ่านด่านเข้ามาได้!',

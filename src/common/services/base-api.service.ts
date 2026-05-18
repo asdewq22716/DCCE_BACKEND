@@ -1,13 +1,14 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { AxiosError, AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class BaseApiService {
   protected readonly logger = new Logger(BaseApiService.name);
 
-  constructor(protected readonly httpService: HttpService) { }
+  constructor(protected readonly httpService: HttpService) {}
 
   /**
    * Hook สำหรับให้ Class ลูก (เช่น AuthService) ส่ง Header/Config พื้นฐานเข้ามาได้
@@ -35,7 +36,9 @@ export class BaseApiService {
         data,
       };
 
-      const response = await firstValueFrom(this.httpService.request<T>(finalConfig));
+      const response = await firstValueFrom(
+        this.httpService.request<T>(finalConfig),
+      );
       return response.data;
     } catch (error) {
       this.handleApiError(error);
@@ -44,19 +47,47 @@ export class BaseApiService {
 
   // --- Helper Methods เพื่อให้เรียกใช้งานได้ง่ายๆ ---
 
-  async get<T>({ url, config }: { url: string; config?: AxiosRequestConfig }): Promise<T> {
+  async get<T>({
+    url,
+    config,
+  }: {
+    url: string;
+    config?: AxiosRequestConfig;
+  }): Promise<T> {
     return this.request<T>('GET', url, undefined, config);
   }
 
-  async post<T>({ url, data, config }: { url: string; data?: any; config?: AxiosRequestConfig }): Promise<T> {
+  async post<T>({
+    url,
+    data,
+    config,
+  }: {
+    url: string;
+    data?: any;
+    config?: AxiosRequestConfig;
+  }): Promise<T> {
     return this.request<T>('POST', url, data, config);
   }
 
-  async put<T>({ url, data, config }: { url: string; data?: any; config?: AxiosRequestConfig }): Promise<T> {
+  async put<T>({
+    url,
+    data,
+    config,
+  }: {
+    url: string;
+    data?: any;
+    config?: AxiosRequestConfig;
+  }): Promise<T> {
     return this.request<T>('PUT', url, data, config);
   }
 
-  async delete<T>({ url, config }: { url: string; config?: AxiosRequestConfig }): Promise<T> {
+  async delete<T>({
+    url,
+    config,
+  }: {
+    url: string;
+    config?: AxiosRequestConfig;
+  }): Promise<T> {
     return this.request<T>('DELETE', url, undefined, config);
   }
 
@@ -65,26 +96,37 @@ export class BaseApiService {
    */
   private handleApiError(error: any): never {
     // กรณีเป็น Error จาก Axios (การเชื่อมต่อภายนอก)
-    if (error.isAxiosError) {
+    if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError;
       const response = axiosError.response;
 
       if (response) {
         // เคสที่ Server ปลายทางตอบกลับมาแต่ Error (เช่น 400, 401, 500)
-        this.logger.error(`API Respond Error: ${response.status} - ${JSON.stringify(response.data)}`);
+        this.logger.error(
+          `API Respond Error: ${response.status} - ${JSON.stringify(response.data)}`,
+        );
         throw new HttpException(
-          { message: 'เซิร์ฟเวอร์ปลายทางแจ้งข้อผิดพลาด', detail: response.data },
+          {
+            message: 'เซิร์ฟเวอร์ปลายทางแจ้งข้อผิดพลาด',
+            detail: response.data,
+          },
           response.status,
         );
       } else if (axiosError.request) {
         // เคสที่ยิงไปแล้วไม่มีใครตอบกลับ (เช่น Timeout, Server ล่ม)
         this.logger.error('API No Response (Timeout or Down)');
-        throw new HttpException('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ (Timeout)', HttpStatus.GATEWAY_TIMEOUT);
+        throw new HttpException(
+          'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ (Timeout)',
+          HttpStatus.GATEWAY_TIMEOUT,
+        );
       }
     }
 
     // กรณี Error อื่นๆ ที่ไม่คาดคิด
-    this.logger.error(`Unexpected Error: ${error.message}`);
-    throw new HttpException('เกิดข้อผิดพลาดภายในระบบ', HttpStatus.INTERNAL_SERVER_ERROR);
+    this.logger.error(`Unexpected Error: ${error.message}`, error.stack);
+    throw new HttpException(
+      `ระบบขัดข้อง: ${error.message || 'เกิดข้อผิดพลาดภายในระบบ'}`,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   }
 }

@@ -6,7 +6,7 @@ import { PgPoolService } from './pg-pool.service';
 export class FncDB {
   private readonly logger = new Logger(FncDB.name);
 
-  constructor(private readonly pgPool: PgPoolService) { }
+  constructor(private readonly pgPool: PgPoolService) {}
 
   // ---------- Transaction Handling ----------
 
@@ -42,7 +42,11 @@ export class FncDB {
     return result.rows;
   }
 
-  async queryTx<T = any>(client: PoolClient, text: string, params?: any[]): Promise<T[]> {
+  async queryTx<T = any>(
+    client: PoolClient,
+    text: string,
+    params?: any[],
+  ): Promise<T[]> {
     const result = await client.query(text, params);
     return result.rows;
   }
@@ -53,7 +57,10 @@ export class FncDB {
    * ค้นหาข้อมูล (Select) แบบง่าย
    * @example await this.db.select('users', { status: 'active' })
    */
-  async select<T = any>(table: string, where?: Record<string, any>): Promise<T[]> {
+  async select<T = any>(
+    table: string,
+    where?: Record<string, any>,
+  ): Promise<T[]> {
     let sql = `SELECT * FROM "${table}"`;
     const params: any[] = [];
 
@@ -70,11 +77,15 @@ export class FncDB {
    * เพิ่มข้อมูล (Insert)
    * @example await this.db.insert('users', { username: 'test', email: 'test@mail.com' })
    */
-  async insert<T = any>(table: string, data: Record<string, any>, client?: PoolClient): Promise<T> {
+  async insert<T = any>(
+    table: string,
+    data: Record<string, any>,
+    client?: PoolClient,
+  ): Promise<T> {
     const keys = Object.keys(data);
     const values = Object.values(data);
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-    const columns = keys.map(k => `"${k}"`).join(', ');
+    const columns = keys.map((k) => `"${k}"`).join(', ');
 
     const sql = `INSERT INTO "${table}" (${columns}) VALUES (${placeholders}) RETURNING *`;
 
@@ -89,12 +100,20 @@ export class FncDB {
    * แก้ไขข้อมูล (Update) - คืนค่าจำนวนแถวที่ถูกแก้ไข
    * @example await this.db.update('users', { name: 'New Name' }, { id: 1 })
    */
-  async update(table: string, data: Record<string, any>, where: Record<string, any>, client?: PoolClient): Promise<number> {
+  async update(
+    table: string,
+    data: Record<string, any>,
+    where: Record<string, any>,
+    client?: PoolClient,
+  ): Promise<number> {
     const updateKeys = Object.keys(data);
     const updateValues = Object.values(data);
 
     const setClause = updateKeys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
-    const { clause: whereClause, values: whereValues } = this.buildWhereClause(where, updateKeys.length + 1);
+    const { clause: whereClause, values: whereValues } = this.buildWhereClause(
+      where,
+      updateKeys.length + 1,
+    );
 
     const sql = `UPDATE "${table}" SET ${setClause} WHERE ${whereClause}`;
     const allValues = [...updateValues, ...whereValues];
@@ -110,7 +129,11 @@ export class FncDB {
    * ลบข้อมูล (Delete) - คืนค่าจำนวนแถวที่ถูกลบ
    * @example await this.db.delete('users', { id: 1 })
    */
-  async delete(table: string, where: Record<string, any>, client?: PoolClient): Promise<number> {
+  async delete(
+    table: string,
+    where: Record<string, any>,
+    client?: PoolClient,
+  ): Promise<number> {
     const { clause, values } = this.buildWhereClause(where);
     const sql = `DELETE FROM "${table}" WHERE ${clause}`;
 
@@ -124,12 +147,14 @@ export class FncDB {
   private buildWhereClause(where: Record<string, any>, startIndex = 1) {
     const keys = Object.keys(where);
     const values = Object.values(where);
-    const clause = keys.map((k, i) => `"${k}" = $${startIndex + i}`).join(' AND ');
+    const clause = keys
+      .map((k, i) => `"${k}" = $${startIndex + i}`)
+      .join(' AND ');
 
     return {
       clause,
       values,
-      nextIndex: startIndex + keys.length
+      nextIndex: startIndex + keys.length,
     };
   }
 }

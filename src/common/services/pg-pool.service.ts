@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
 
@@ -8,12 +13,21 @@ export class PgPoolService implements OnModuleInit, OnModuleDestroy {
   public readonly pool: Pool;
 
   constructor(private readonly configService: ConfigService) {
+    const host = this.configService.get<string>('DB_HOST');
+    const port = this.configService.get<number>('DB_PORT');
+    const user = this.configService.get<string>('DB_USER');
+    const database = this.configService.get<string>('DB_NAME');
+
+    this.logger.log(
+      `Initializing PG Pool with host: ${host}, port: ${port}, user: ${user}, database: ${database}`,
+    );
+
     this.pool = new Pool({
-      host: this.configService.get<string>('DB_HOST'),
-      port: this.configService.get<number>('DB_PORT'),
-      user: this.configService.get<string>('DB_USER'),
+      host,
+      port,
+      user,
       password: this.configService.get<string>('DB_PASSWORD'),
-      database: this.configService.get<string>('DB_NAME'),
+      database,
       max: 20,
     });
   }
@@ -23,7 +37,10 @@ export class PgPoolService implements OnModuleInit, OnModuleDestroy {
       await this.pool.query('SELECT 1');
       this.logger.log('Successfully connected to PostgreSQL (PgPoolService)');
     } catch (error: any) {
-      this.logger.error('Failed to connect to PostgreSQL (PgPoolService)', error.stack);
+      this.logger.error(
+        'Failed to connect to PostgreSQL (PgPoolService)',
+        error.stack,
+      );
     }
   }
 

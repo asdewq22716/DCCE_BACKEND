@@ -9,7 +9,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: any) => {
-          let data = request?.cookies['access_token'];
+          const data = request?.cookies['access_token'];
           if (!data) {
             return null;
           }
@@ -18,7 +18,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ]),
       ignoreExpiration: false,
       // 2. ใช้ Secret Key ตัวเดียวกับตอน Sign Token
-      secretOrKey: configService.get<string>('JWT_SECRET') || 'fallback_secret_key_for_dev',
+      secretOrKey:
+        configService.get<string>('JWT_SECRET') ||
+        'fallback_secret_key_for_dev',
     });
   }
 
@@ -30,7 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // Return ข้อมูลที่จะไปอยู่ใน req.user
     return {
       userId: payload.sub,
-      username: payload.username
+      username: payload.username,
     };
   }
 }

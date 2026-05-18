@@ -29,7 +29,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
     // จัดรูปแบบ Error Message
-    const message = exception.response?.message || exception.message || 'Internal Server Error';
+    const message =
+      exception.response?.message ||
+      exception.message ||
+      'Internal Server Error';
 
     /**
      * ตัวอย่าง Status Code ที่พบบ่อย:
@@ -41,11 +44,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
      */
 
     response.status(status).json({
-      status: status,           // รหัสสถานะ (ตัวเลข)
-      success: false,           // แจ้งว่าทำงาน "ไม่สำเร็จ"
-      message: message,         // ข้อความอธิบายความผิดพลาด
-      error: exception.name,    // ชื่อประเภทของ Error
-      path: request.url,        // URL ที่เกิดปัญหา
+      status: status, // รหัสสถานะ (ตัวเลข)
+      success: false, // แจ้งว่าทำงาน "ไม่สำเร็จ"
+      message: message, // ข้อความอธิบายความผิดพลาด
+      error: exception.name, // ชื่อประเภทของ Error
+      path: request.url, // URL ที่เกิดปัญหา
       timestamp: new Date().toISOString(),
     });
   }
@@ -68,10 +71,10 @@ export class TransformInterceptor implements NestInterceptor {
         const statusCode = context.switchToHttp().getResponse().statusCode;
 
         return {
-          status: statusCode,    // รหัสสถานะ (ตัวเลข)
-          success: true,         // แจ้งว่าทำงาน "สำเร็จ"
-          message: 'Success',    // ข้อความแจ้งสถานะ
-          data: data,            // ข้อมูลจริงที่ได้จาก Service
+          status: statusCode, // รหัสสถานะ (ตัวเลข)
+          success: true, // แจ้งว่าทำงาน "สำเร็จ"
+          message: 'Success', // ข้อความแจ้งสถานะ
+          data: data, // ข้อมูลจริงที่ได้จาก Service
         };
       }),
     );

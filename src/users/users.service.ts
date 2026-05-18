@@ -1,4 +1,11 @@
-import { Injectable, UnauthorizedException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  Logger,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { FncDB } from 'src/common/services/fnc-db.service';
 import { PermissionsService } from 'src/permissions/permissions.service';
 
@@ -9,8 +16,7 @@ export class UsersService {
   constructor(
     private readonly db: FncDB,
     private readonly permissionsService: PermissionsService,
-  ) { }
-
+  ) {}
 
   async getUserRoleByUserId(user_id: number): Promise<any[]> {
     try {
@@ -19,13 +25,15 @@ export class UsersService {
         join user_roles b on a.user_id = b.user_id 
         join roles c on b.role_id = c.role_id 
         where a.user_id = $1`,
-        [user_id]);
+        [user_id],
+      );
       if (roles.length === 0) {
-        throw new UnauthorizedException('บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน');
+        throw new UnauthorizedException(
+          'บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน',
+        );
       }
 
       return roles;
-
     } catch (err: any) {
       if (err instanceof UnauthorizedException) throw err;
       this.logger.error(`Get user role by user id error: ${err.message}`);
@@ -35,7 +43,7 @@ export class UsersService {
 
   async getUserById(userId: number) {
     const users = await this.db.select<any>('users', {
-      user_id: userId
+      user_id: userId,
     });
     if (users.length === 0) {
       throw new Error('User not found');
@@ -67,7 +75,7 @@ export class UsersService {
         is_active: users[0].is_active,
         last_login: users[0].last_login,
       },
-      roles: roles
+      roles: roles,
     };
   }
 }

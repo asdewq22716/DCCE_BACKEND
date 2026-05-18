@@ -6,7 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
 import { UsersModule } from './users/users.module';
 import { PermissionsModule } from './permissions/permissions.module';
-
+import { OrganizationsModule } from './organizations/organizations.module';
 
 @Module({
   imports: [
@@ -15,8 +15,9 @@ import { PermissionsModule } from './permissions/permissions.module';
     AuthModule,
     UsersModule,
     PermissionsModule,
+    OrganizationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

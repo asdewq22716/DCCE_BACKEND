@@ -69,7 +69,6 @@ export class SsoAuthData {
   sub_division_name: string;
 }
 
-
 export class SsoAuthDataReturn {
   @ApiProperty({ description: 'Token สำหรับยืนยันตัวตน' })
   sso_token: string;
@@ -133,7 +132,10 @@ export class SsoAuthResponseDto extends SsoAuthDataReturn {
   @ApiProperty({ description: 'เข้าสู่ระบบล่าสุดเมื่อ' })
   last_login: Date;
 
-  @ApiProperty({ description: 'สถานะการใช้งาน (1 = active, 0 = inactive)', enum: [0, 1] })
+  @ApiProperty({
+    description: 'สถานะการใช้งาน (1 = active, 0 = inactive)',
+    enum: [0, 1],
+  })
   is_active: 0 | 1;
 }
 

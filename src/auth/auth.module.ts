@@ -8,7 +8,6 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from 'src/users/users.module';
 
-
 @Module({
   imports: [
     HttpModule,
@@ -17,14 +16,16 @@ import { UsersModule } from 'src/users/users.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'fallback_secret_key_for_dev',
+        secret:
+          configService.get<string>('JWT_SECRET') ||
+          'fallback_secret_key_for_dev',
         signOptions: { expiresIn: '1d' }, // Token valid for 1 day
       }),
     }),
-    UsersModule
+    UsersModule,
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

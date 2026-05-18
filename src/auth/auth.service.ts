@@ -1,7 +1,16 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  HttpException,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { SsoAuthData, SsoBaseResponse, SsoAuthResponseDto } from './interfaces/sso-response.interface';
+import {
+  SsoAuthData,
+  SsoBaseResponse,
+  SsoAuthResponseDto,
+} from './interfaces/sso-response.interface';
 import { BaseApiService } from 'src/common/services/base-api.service';
 import { FncDB } from 'src/common/services/fnc-db.service';
 import { JwtService } from '@nestjs/jwt';
@@ -28,7 +37,7 @@ export class AuthService extends BaseApiService {
   protected override getDefaultConfig() {
     //const appName = this.configService.get<string>('SSO_APP_NAME');
     return {
-      headers: {}
+      headers: {},
     };
   }
 
@@ -43,11 +52,12 @@ export class AuthService extends BaseApiService {
    */
   async login(username: string, password: string): Promise<SsoAuthResponseDto> {
     try {
-      const { result_code, result_text, result_data } =
-        await this.get<SsoBaseResponse<SsoAuthData>>({
-          url: `${this.ssoBaseUrl}/auth2/`,
-          config: { params: { user: username, pass: password } }
-        });
+      const { result_code, result_text, result_data } = await this.get<
+        SsoBaseResponse<SsoAuthData>
+      >({
+        url: `${this.ssoBaseUrl}/auth2/`,
+        config: { params: { user: username, pass: password } },
+      });
 
       if (result_code !== '1000') {
         const errorMsg = result_text || 'Username หรือ Password ไม่ถูกต้อง';
@@ -61,20 +71,28 @@ export class AuthService extends BaseApiService {
       // ตรวจสอบสิทธิ์การเข้าใช้งานจากตาราง users (is_active = 1) ด้วย FncDB 🚀
       const users = await this.db.select<any>('users', {
         sso_userid: result_data.userid,
-        is_active: 1
+        is_active: 1,
       });
 
       if (users.length === 0) {
-        throw new UnauthorizedException('บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน');
+        throw new UnauthorizedException(
+          'บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน',
+        );
       }
 
       const u = users[0];
       return this.mapUserToResponse(u);
-
     } catch (err: any) {
-      if (err instanceof UnauthorizedException) throw err;
-      this.logger.error(`Login Process Error: ${err.message}`);
-      throw new BadRequestException('ไม่สามารถเข้าสู่ระบบผ่าน SSO ได้ในขณะนี้');
+      this.logger.error(`Login Process Error Detail:`, err); // พ่น error ทั้งก้อนลง log server
+
+      // ถ้าเป็น Exception ที่เราตั้งใจพ่นออกมาอยู่แล้ว (เช่น Unauthorized หรือ Error จาก BaseApiService) ให้พ่นต่อเลย
+      if (err instanceof HttpException) throw err;
+
+      const errorMessage = err.response?.data
+        ? JSON.stringify(err.response.data)
+        : err.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ';
+
+      throw new BadRequestException(`ระบบขัดข้อง: ${errorMessage}`);
     }
   }
 
@@ -83,34 +101,36 @@ export class AuthService extends BaseApiService {
    */
   async verify(token: string): Promise<SsoAuthResponseDto> {
     try {
-      const { result_code, result_data } =
-        await this.get<SsoBaseResponse<SsoAuthData>>(
-          {
-            url: `${this.ssoBaseUrl}/verify2`,
-            config: { params: { token } }
-          });
+      const { result_code, result_data } = await this.get<
+        SsoBaseResponse<SsoAuthData>
+      >({
+        url: `${this.ssoBaseUrl}/verify2`,
+        config: { params: { token } },
+      });
 
       if (result_code !== '1000') {
         throw new UnauthorizedException('Token ไม่ถูกต้องหรือหมดอายุแล้ว');
       }
 
-      const users = await this.db.select<any>('users', { sso_userid: result_data.userid, is_active: 1 });
+      const users = await this.db.select<any>('users', {
+        sso_userid: result_data.userid,
+        is_active: 1,
+      });
 
       if (users.length === 0) {
-        throw new UnauthorizedException('บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน');
+        throw new UnauthorizedException(
+          'บัญชีผู้ใช้งานนี้ไม่ได้รับอนุญาตให้เข้าใช้งาน',
+        );
       }
 
       const u = users[0];
       return this.mapUserToResponse(u);
-
     } catch (err: any) {
-      if (err instanceof UnauthorizedException) throw err;
+      if (err instanceof HttpException) throw err;
       this.logger.error(`Verify Token Error: ${err.message}`);
       throw new BadRequestException('ไม่สามารถตรวจสอบสถานะ Token ได้');
     }
   }
-
-
 
   /**
    * 3. ฟังก์ชัน Sync ข้อมูลจาก SSO ลงตาราง users
@@ -140,13 +160,13 @@ export class AuthService extends BaseApiService {
         sso_division_name: data.division_name,
         sso_sub_division_id: data.sub_division_id,
         sso_sub_division_name: data.sub_division_name,
-        full_name: `${data.prefix_name || ''}${data.firstname} ${data.lastname}`.trim(),
-        last_login: new Date()
+        full_name:
+          `${data.prefix_name || ''}${data.firstname} ${data.lastname}`.trim(),
+        last_login: new Date(),
       };
 
       this.logger.log(`Update user profile: ${data.username}`);
       await this.db.update(table, updateData, { sso_userid: data.userid });
-
     } else {
       // 2. กรณี Insert: ข้อมูลเริ่มต้นสำหรับผู้ใช้งานใหม่
       const insertData = {
@@ -168,9 +188,10 @@ export class AuthService extends BaseApiService {
         sso_division_name: data.division_name,
         sso_sub_division_id: data.sub_division_id,
         sso_sub_division_name: data.sub_division_name,
-        full_name: `${data.prefix_name || ''}${data.firstname} ${data.lastname}`.trim(),
+        full_name:
+          `${data.prefix_name || ''}${data.firstname} ${data.lastname}`.trim(),
         last_login: new Date(),
-        is_active: 1 // ตั้งค่าเริ่มต้นเป็น 1 เฉพาะตอนสร้างใหม่
+        is_active: 1, // ตั้งค่าเริ่มต้นเป็น 1 เฉพาะตอนสร้างใหม่
       };
 
       this.logger.log(`Insert new user: ${data.username}`);
@@ -203,7 +224,7 @@ export class AuthService extends BaseApiService {
       sso_sub_division_id: u.sso_sub_division_id,
       sso_sub_division_name: u.sso_sub_division_name,
       last_login: u.last_login,
-      is_active: u.is_active
+      is_active: u.is_active,
     };
   }
 }

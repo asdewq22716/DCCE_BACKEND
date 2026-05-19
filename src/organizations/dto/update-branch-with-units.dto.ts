@@ -73,6 +73,14 @@ export class UpdateBranchWithUnitsDto {
   is_active?: number;
 
   @ApiProperty({
+    description: 'หมายเหตุ / เหตุผลในการแก้ไขปรับปรุงโครงสร้างองค์กรรอบนี้',
+    example: 'ปรับปรุงชื่อหน่วยงานย่อยและสลับลำดับการแสดงผล',
+  })
+  @IsString()
+  @IsNotEmpty()
+  remark: string;
+
+  @ApiProperty({
     description: 'รายชื่อหน่วยงานย่อยทั้งหมดในปัจจุบัน (แถวที่หายไปจากลิสต์นี้ จะถือว่าแอดมินกดลบออกจากตาราง และจะถูกย้ายเป็นสถานะ is_active = 0 ใน DB อัตโนมัติ)',
     type: [UpdateUnitDto],
     example: [

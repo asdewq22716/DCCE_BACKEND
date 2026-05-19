@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { OrganizationsService } from './organizations.service';
@@ -15,6 +16,7 @@ import { AssignUserDto } from './dto/assign-user.dto';
 import { CreateBranchWithUnitsDto } from './dto/create-branch-with-units.dto';
 import { UpdateBranchWithUnitsDto } from './dto/update-branch-with-units.dto';
 import { BranchQueryDto } from './dto/organizations-queries.dto';
+import { OrganizationType } from './types/organization.type';
 
 @ApiTags('Organizations')
 @Controller('organizations')
@@ -23,19 +25,27 @@ export class OrganizationsController {
 
   @Post('branches-with-units')
   @ApiOperation({ summary: 'สร้างสาขาหลักพร้อมจัดตั้งหน่วยงานย่อยรวดเดียว (Bulk Insert ด้วย Transaction)' })
-  createBranchWithUnits(@Body() dto: CreateBranchWithUnitsDto) {
+  createBranchWithUnits(@Body() dto: CreateBranchWithUnitsDto): Promise<OrganizationType> {
     return this.organizationsService.createBranchWithUnits(dto);
   }
 
   @Put('branches-with-units')
   @ApiOperation({ summary: 'แก้ไขสาขาหลักพร้อมปรับแต่งหน่วยงานย่อยทั้งหมดรวดเดียว (Bulk Upsert & Delete ด้วย Transaction)' })
-  updateBranchWithUnits(@Body() dto: UpdateBranchWithUnitsDto) {
-    return this.organizationsService.updateBranchWithUnits(dto);
+  updateBranchWithUnits(
+    @Req() req: any,
+    @Body() dto: UpdateBranchWithUnitsDto,
+  ) {
+    const context = {
+      userId: req.user?.userId || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+    return this.organizationsService.updateBranchWithUnits(dto, context);
   }
 
   @Get('branches')
   @ApiOperation({ summary: 'ดึงรายชื่อสาขาหลักทั้งหมดพร้อมแผนกย่อย (หรือเจาะจงเฉพาะสาขาหลักรายตัวผ่าน Query ?id=18)' })
-  findAllBranches(@Query() query: BranchQueryDto) {
+  findAllBranches(@Query() query: BranchQueryDto): Promise<OrganizationType | OrganizationType[]> {
     const branchId = query.id ? parseInt(query.id, 10) : undefined;
     return this.organizationsService.findAllBranches(branchId);
   }

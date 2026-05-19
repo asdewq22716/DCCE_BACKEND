@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { map } from 'rxjs/operators';
 
+import { FncCustom } from './fnc-custom';
+
 /**
  * 1. ส่วนสำหรับจัดการ ERROR (Exception Filter)
  * ทำหน้าที่: เมื่อเกิด Error ในระบบ จะจับมาใส่กล่อง JSON รูปแบบเดียวกัน
@@ -49,7 +51,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message: message, // ข้อความอธิบายความผิดพลาด
       error: exception.name, // ชื่อประเภทของ Error
       path: request.url, // URL ที่เกิดปัญหา
-      timestamp: new Date().toISOString(),
+      timestamp: FncCustom.dateNowISOString(),
     });
   }
 }

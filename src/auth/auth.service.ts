@@ -13,6 +13,7 @@ import {
 } from './interfaces/sso-response.interface';
 import { BaseApiService } from 'src/common/services/base-api.service';
 import { FncDB } from 'src/common/services/fnc-db.service';
+import { FncCustom } from 'src/common/fnc-custom';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
@@ -162,7 +163,7 @@ export class AuthService extends BaseApiService {
         sso_sub_division_name: data.sub_division_name,
         full_name:
           `${data.prefix_name || ''}${data.firstname} ${data.lastname}`.trim(),
-        last_login: new Date(),
+        last_login: FncCustom.dateNow(),
       };
 
       this.logger.log(`Update user profile: ${data.username}`);
@@ -190,7 +191,7 @@ export class AuthService extends BaseApiService {
         sso_sub_division_name: data.sub_division_name,
         full_name:
           `${data.prefix_name || ''}${data.firstname} ${data.lastname}`.trim(),
-        last_login: new Date(),
+        last_login: FncCustom.dateNow(),
         is_active: 1, // ตั้งค่าเริ่มต้นเป็น 1 เฉพาะตอนสร้างใหม่
       };
 

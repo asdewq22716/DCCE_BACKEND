@@ -5,18 +5,24 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FncDB } from 'src/common/services/fnc-db.service';
+import { AuditLogService, AuditContext } from 'src/common/services/audit-log.service';
+import { FncCustom } from 'src/common/fnc-custom';
 import { AssignUserDto } from './dto/assign-user.dto';
 import { CreateBranchWithUnitsDto } from './dto/create-branch-with-units.dto';
 import { UpdateBranchWithUnitsDto } from './dto/update-branch-with-units.dto';
+import { OrganizationType } from './types/organization.type';
 
 @Injectable()
 export class OrganizationsService {
   private readonly logger = new Logger(OrganizationsService.name);
 
-  constructor(private readonly db: FncDB) { }
+  constructor(
+    private readonly db: FncDB,
+    private readonly auditLog: AuditLogService,
+  ) { }
 
   // 1.1 สร้างสาขาพร้อมหน่วยงานย่อยรวดเดียว (Bulk Insert ด้วย Database Transaction)
-  async createBranchWithUnits(dto: CreateBranchWithUnitsDto) {
+  async createBranchWithUnits(dto: CreateBranchWithUnitsDto): Promise<OrganizationType> {
     const trimmedBranchName = dto.branch_name.trim();
     if (!trimmedBranchName) {
       throw new BadRequestException('ชื่อสาขาหลักไม่สามารถเป็นช่องว่างได้');
@@ -89,12 +95,14 @@ export class OrganizationsService {
   }
 
   // 3. ดึงรายชื่อสาขาหลักทั้งหมด พร้อมหน่วยงานย่อย (ไม่ดึงตัวที่ถูกลบ is_active = 0)
-  async findAllBranches(id?: number) {
+  async findAllBranches(id?: number): Promise<OrganizationType | OrganizationType[]> {
     try {
       if (id) {
         // กรณีดึงสาขาเดี่ยวตาม id
         const branchRows = await this.db.query(
-          'SELECT * FROM organizations WHERE org_id = $1 AND parent_id IS NULL AND is_active = 1',
+          `SELECT org_id, org_name, parent_id, sort_order, level, is_active 
+           FROM organizations 
+           WHERE org_id = $1 AND parent_id IS NULL AND is_active = 1`,
           [id],
         );
         if (branchRows.length === 0) {
@@ -107,8 +115,6 @@ export class OrganizationsService {
              o.org_id, 
              o.org_name, 
              o.parent_id,
-             o.created_at,
-             o.updated_at,
              o.sort_order,
              o.level,
              o.is_active,
@@ -116,19 +122,35 @@ export class OrganizationsService {
            FROM organizations o
            LEFT JOIN user_organizations uo ON o.org_id = uo.org_id
            WHERE o.parent_id = $1 AND o.is_active = 1
-           GROUP BY o.org_id, o.org_name, o.parent_id, o.created_at, o.updated_at, o.sort_order, o.level, o.is_active
+           GROUP BY o.org_id, o.org_name, o.parent_id, o.sort_order, o.level, o.is_active
            ORDER BY o.sort_order ASC, o.org_id ASC`,
           [id],
         );
 
         return {
-          ...branch,
-          units: units,
+          org_id: branch.org_id,
+          org_name: branch.org_name,
+          parent_id: branch.parent_id,
+          sort_order: branch.sort_order,
+          level: branch.level,
+          is_active: branch.is_active,
+          units: units.map((u: any) => ({
+            org_id: u.org_id,
+            org_name: u.org_name,
+            parent_id: u.parent_id,
+            sort_order: u.sort_order,
+            level: u.level,
+            is_active: u.is_active,
+            user_count: u.user_count,
+          })),
         };
       } else {
         // กรณีดึงทุกสาขาหลัก
         const branches = await this.db.query(
-          'SELECT * FROM organizations WHERE parent_id IS NULL AND is_active = 1 ORDER BY sort_order ASC, org_id ASC',
+          `SELECT org_id, org_name, parent_id, sort_order, level, is_active 
+           FROM organizations 
+           WHERE parent_id IS NULL AND is_active = 1 
+           ORDER BY sort_order ASC, org_id ASC`,
         );
 
         // ดึงแผนกย่อยทั้งหมดที่พ่วงจำนวนผู้ใช้
@@ -137,8 +159,6 @@ export class OrganizationsService {
              o.org_id, 
              o.org_name, 
              o.parent_id,
-             o.created_at,
-             o.updated_at,
              o.sort_order,
              o.level,
              o.is_active,
@@ -146,20 +166,35 @@ export class OrganizationsService {
            FROM organizations o
            LEFT JOIN user_organizations uo ON o.org_id = uo.org_id
            WHERE o.parent_id IS NOT NULL AND o.is_active = 1
-           GROUP BY o.org_id, o.org_name, o.parent_id, o.created_at, o.updated_at, o.sort_order, o.level, o.is_active
+           GROUP BY o.org_id, o.org_name, o.parent_id, o.sort_order, o.level, o.is_active
            ORDER BY o.sort_order ASC, o.org_id ASC`,
         );
 
-        // แมปหน่วยงานย่อยใส่เข้าสาขาหลักของตนเอง
-        return branches.map((branch: any) => {
-          const branchUnits = allUnits.filter(
-            (unit: any) => unit.parent_id === branch.org_id,
-          );
-          return {
-            ...branch,
-            units: branchUnits,
-          };
-        });
+        // จับคู่หน่วยงานย่อยใส่เข้าในแต่ละสาขาหลัก
+        for (const branch of branches) {
+          branch.units = allUnits
+            .filter((unit: any) => unit.parent_id === branch.org_id)
+            .map((unit: any) => ({
+              org_id: unit.org_id,
+              org_name: unit.org_name,
+              parent_id: unit.parent_id,
+              sort_order: unit.sort_order,
+              level: unit.level,
+              is_active: unit.is_active,
+              user_count: unit.user_count,
+            }));
+        }
+
+        // แมปคืนค่าเฉพาะฟิลด์ที่ระบุใน OrganizationType
+        return branches.map((branch: any) => ({
+          org_id: branch.org_id,
+          org_name: branch.org_name,
+          parent_id: branch.parent_id,
+          sort_order: branch.sort_order,
+          level: branch.level,
+          is_active: branch.is_active,
+          units: branch.units,
+        }));
       }
     } catch (err: any) {
       if (err instanceof NotFoundException) {
@@ -226,7 +261,10 @@ export class OrganizationsService {
   }
 
   // 1.2 แก้ไขสาขาพร้อมหน่วยงานย่อยรวดเดียว (Bulk Upsert & Delete)
-  async updateBranchWithUnits(dto: UpdateBranchWithUnitsDto) {
+  async updateBranchWithUnits(
+    dto: UpdateBranchWithUnitsDto,
+    context?: AuditContext,
+  ) {
     const branchId = dto.branch_id;
     const branchExists = await this.db.select('organizations', { org_id: branchId, is_active: 1 });
     if (branchExists.length === 0) {
@@ -256,9 +294,10 @@ export class OrganizationsService {
 
       await this.db.update(
         'organizations',
-        { 
-          org_name: trimmedBranchName, 
-          updated_at: new Date() 
+        {
+          org_name: trimmedBranchName,
+          is_active: dto.is_active ?? branchExists[0].is_active,
+          updated_at: FncCustom.dateNow()
         },
         { org_id: branchId },
         client,
@@ -290,7 +329,7 @@ export class OrganizationsService {
       }
 
       if (unitsToDelete.length > 0) {
-        const deleteIds = unitsToDelete.map((u: any) => u.org_id);
+        const deleteIds = unitsToDelete.map((u) => u.org_id);
         await this.db.queryTx(
           client,
           'UPDATE organizations SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE org_id = ANY($1)',
@@ -315,10 +354,11 @@ export class OrganizationsService {
 
           await this.db.update(
             'organizations',
-            { 
-              org_name: trimmedUnitName, 
-              sort_order: unit.sort_order ?? 0, 
-              updated_at: new Date() 
+            {
+              org_name: trimmedUnitName,
+              sort_order: unit.sort_order ?? 0,
+              is_active: unit.is_active ?? unitRecord[0].is_active,
+              updated_at: FncCustom.dateNow()
             },
             { org_id: unit.org_id },
             client,
@@ -327,9 +367,10 @@ export class OrganizationsService {
           processedUnits.push({
             org_id: unit.org_id,
             org_name: trimmedUnitName,
+            parent_id: branchId,
             sort_order: unit.sort_order ?? 0,
             level: unitRecord[0].level,
-            is_active: unitRecord[0].is_active,
+            is_active: unit.is_active ?? unitRecord[0].is_active,
           });
         } else {
           // แผนกใหม่: บันทึกข้อมูลเพิ่ม
@@ -340,13 +381,27 @@ export class OrganizationsService {
               parent_id: branchId,
               sort_order: unit.sort_order ?? 0,
               level: 2,
-              is_active: 1,
+              is_active: unit.is_active ?? 1,
             },
             client,
           );
           processedUnits.push(newUnit);
         }
       }
+
+      // บันทึกกิจกรรมลงตาราง Log กลางผ่าน AuditLogService แบบ Global
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'UPDATE',
+          moduleName: 'organizations',
+          recordId: branchId.toString(),
+          oldData: branchExists[0],
+          newData: dto,
+          remark: dto.remark,
+        },
+        context,
+      );
 
       await this.db.commit(client);
 
@@ -364,7 +419,7 @@ export class OrganizationsService {
   }
 
   // 2. ดึงข้อมูลหน่วยงาน/สาขาตาม ID
-  async findOneOrg(id: number) {
+  async findOneOrg(id: number): Promise<OrganizationType> {
     const orgs = await this.db.select('organizations', { org_id: id, is_active: 1 });
     if (orgs.length === 0) {
       throw new NotFoundException('ไม่พบข้อมูลหน่วยงานที่ระบุ');

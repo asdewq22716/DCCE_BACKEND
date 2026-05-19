@@ -7,6 +7,7 @@ import { CommonModule } from './common/common.module';
 import { UsersModule } from './users/users.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
     UsersModule,
     PermissionsModule,
     OrganizationsModule,
+    AuditLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

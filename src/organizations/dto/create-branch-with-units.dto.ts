@@ -32,6 +32,10 @@ export class CreateBranchWithUnitsDto {
   @ApiProperty({
     description: 'รายการหน่วยงานย่อยทั้งหมดที่สร้างพร้อมสาขานี้',
     type: [UnitItemDto],
+    example: [
+      { org_name: 'กองบริหารจัดการน้ำ', sort_order: 1 },
+      { org_name: 'ศูนย์เฝ้าระวังภัยแล้ง', sort_order: 2 }
+    ]
   })
   @IsArray()
   @ValidateNested({ each: true })

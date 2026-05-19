@@ -40,6 +40,12 @@ export class OrganizationsController {
     return this.organizationsService.findAllBranches(branchId);
   }
 
+  @Delete('branches/:id')
+  @ApiOperation({ summary: 'ลบสาขาหลักพร้อมแผนกย่อยทั้งหมดภายใต้สาขานั้น (Soft Delete)' })
+  deleteBranch(@Param('id', ParseIntPipe) id: number) {
+    return this.organizationsService.deleteBranch(id);
+  }
+
   // ---------- User Assignment Endpoints ----------
 
   @Post('assign')

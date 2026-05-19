@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FncDB } from 'src/common/services/fnc-db.service';
-import { UpdateOrgDto } from './dto/update-org.dto';
 import { AssignUserDto } from './dto/assign-user.dto';
 import { CreateBranchWithUnitsDto } from './dto/create-branch-with-units.dto';
 import { UpdateBranchWithUnitsDto } from './dto/update-branch-with-units.dto';
@@ -166,108 +165,6 @@ export class OrganizationsService {
     }
   }
 
-  // 5. แก้ไขข้อมูลสาขาหรือหน่วยงานย่อย
-  async updateOrg(id: number, dto: UpdateOrgDto) {
-    await this.findOneOrg(id);
-
-    const updateData: Record<string, any> = {};
-
-    if (dto.org_name !== undefined) {
-      const trimmedName = dto.org_name.trim();
-      if (!trimmedName) {
-        throw new BadRequestException('ชื่อหน่วยงานไม่สามารถเป็นช่องว่างได้');
-      }
-      updateData.org_name = trimmedName;
-    }
-
-    if (dto.parent_id !== undefined) {
-      if (dto.parent_id) {
-        // หากระบุ parent_id ใหม่ ให้ตรวจสอบว่าหน่วยงานแม่มีจริงหรือไม่
-        const parent = await this.db.select('organizations', {
-          org_id: dto.parent_id,
-        });
-        if (parent.length === 0) {
-          throw new NotFoundException(
-            'ไม่พบหน่วยงานแม่ข่าย/สาขาใหม่ที่อ้างอิง',
-          );
-        }
-        // ป้องกันไม่ให้ชี้หน่วยงานแม่เป็นไอดีตัวเอง
-        if (dto.parent_id === id) {
-          throw new BadRequestException(
-            'ไม่สามารถระบุให้หน่วยงานแม่เป็นตัวมันเองได้',
-          );
-        }
-      }
-      updateData.parent_id = dto.parent_id || null;
-    }
-
-    updateData.updated_at = new Date();
-
-    try {
-      const updated = await this.db.update('organizations', updateData, {
-        org_id: id,
-      });
-      if (updated === 0) {
-        throw new BadRequestException('ไม่มีการเปลี่ยนแปลงข้อมูล');
-      }
-      return await this.findOneOrg(id);
-    } catch (err: any) {
-      if (
-        err instanceof BadRequestException ||
-        err instanceof NotFoundException
-      ) {
-        throw err;
-      }
-      this.logger.error(`Update organization error: ${err.message}`);
-      throw new BadRequestException('ไม่สามารถบันทึกการแก้ไขข้อมูลหน่วยงานได้');
-    }
-  }
-
-  // 6. ลบสาขาหรือหน่วยงานย่อยอย่างปลอดภัย (Hard Delete)
-  async deleteOrg(id: number) {
-    const org = await this.findOneOrg(id);
-
-    // 6.1 ถ้าเป็นสาขาหลัก (parent_id IS NULL): ตรวจสอบว่ายังมีหน่วยงานย่อยสังกัดอยู่ใต้สาขานี้หรือไม่
-    if (org.parent_id === null) {
-      const childUnits = await this.db.select('organizations', {
-        parent_id: id,
-      });
-      if (childUnits.length > 0) {
-        throw new BadRequestException(
-          'ไม่สามารถลบสาขานี้ได้ เนื่องจากยังมีหน่วยงานย่อยสังกัดอยู่ภายใต้สาขานี้',
-        );
-      }
-    }
-
-    // 6.2 ตรวจสอบความปลอดภัย: เช็คว่ามีผู้ใช้งานสังกัดอยู่ในหน่วยงาน (org_id) นี้ในตาราง user_organizations หรือไม่
-    const assignedUsers = await this.db.select('user_organizations', {
-      org_id: id,
-    });
-    if (assignedUsers.length > 0) {
-      throw new BadRequestException(
-        'ไม่สามารถลบหน่วยงานนี้ได้ เนื่องจากยังมีผู้ใช้งานผูกสังกัดอยู่ในหน่วยงานนี้',
-      );
-    }
-
-    try {
-      const deletedCount = await this.db.delete('organizations', {
-        org_id: id,
-      });
-      if (deletedCount === 0) {
-        throw new NotFoundException('ไม่พบหน่วยงานที่ต้องการลบ');
-      }
-      return { message: 'ลบหน่วยงานเรียบร้อยแล้ว' };
-    } catch (err: any) {
-      this.logger.error(`Delete organization error: ${err.message}`);
-      if (
-        err instanceof BadRequestException ||
-        err instanceof NotFoundException
-      ) {
-        throw err;
-      }
-      throw new BadRequestException('ไม่สามารถลบข้อมูลหน่วยงานได้');
-    }
-  }
 
   // ---------- 7. User Organizations Assignment (ผูกสังกัดผู้ใช้งาน) ----------
 

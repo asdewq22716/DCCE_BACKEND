@@ -81,16 +81,18 @@ export class UpdateBranchWithUnitsDto {
   remark: string;
 
   @ApiProperty({
-    description: 'รายชื่อหน่วยงานย่อยทั้งหมดในปัจจุบัน (แถวที่หายไปจากลิสต์นี้ จะถือว่าแอดมินกดลบออกจากตาราง และจะถูกย้ายเป็นสถานะ is_active = 0 ใน DB อัตโนมัติ)',
+    description: 'รายชื่อหน่วยงานย่อยที่ต้องการเพิ่ม แก้ไข หรือปิดใช้งาน (ส่งเฉพาะรายการที่ต้องการเปลี่ยนแปลงได้ แถวที่ไม่ได้ส่งมาจะไม่ได้รับผลกระทบใด ๆ)',
     type: [UpdateUnitDto],
+    required: false,
     example: [
       { org_id: 2, org_name: 'กองบริหารจัดการน้ำ (แก้ไขแล้ว)', sort_order: 1, is_active: 1 },
-      { org_id: 3, org_name: 'ศูนย์ภัยแล้งระดับเขต', sort_order: 2, is_active: 1 },
+      { org_id: 3, org_name: 'ศูนย์ภัยแล้งระดับเขต', sort_order: 2, is_active: 0 },
       { org_name: 'กองเทคโนโลยีสารสนเทศ (หน่วยงานเพิ่มใหม่)', sort_order: 3, is_active: 1 }
     ]
   })
   @IsArray()
+  @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => UpdateUnitDto)
-  units: UpdateUnitDto[];
+  units?: UpdateUnitDto[];
 }

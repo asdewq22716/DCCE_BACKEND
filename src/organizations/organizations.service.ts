@@ -303,89 +303,76 @@ export class OrganizationsService {
         client,
       );
 
-      // ขั้นตอน B: ดึง ID ของแผนกย่อยทั้งหมดที่ถูกส่งมาจาก DTO
-      const sentUnitIds = dto.units
-        .map((u) => u.org_id)
-        .filter((id): id is number => typeof id === 'number' && id > 0);
-
-      // ขั้นตอน C: ทำ Soft Delete แผนกย่อยเก่าที่ไม่ได้ถูกส่งมารอบนี้ (เซ็ต is_active = 0)
-      let deleteQuery = 'SELECT org_id, org_name FROM organizations WHERE parent_id = $1 AND is_active = 1';
-      const deleteQueryParams: any[] = [branchId];
-      if (sentUnitIds.length > 0) {
-        deleteQuery += ' AND org_id <> ALL($2)';
-        deleteQueryParams.push(sentUnitIds);
-      }
-
-      const unitsToDelete = await this.db.queryTx(client, deleteQuery, deleteQueryParams);
-
-      for (const u of unitsToDelete) {
-        // ห้ามลบแผนกย่อยหากยังมีพนักงานผูกสังกัดอยู่
-        const assignedUsers = await this.db.queryTx(client, 'SELECT * FROM user_organizations WHERE org_id = $1', [u.org_id]);
-        if (assignedUsers.length > 0) {
-          throw new BadRequestException(
-            `ไม่สามารถลบแผนก "${u.org_name}" ได้ เนื่องจากยังมีพนักงานผูกสังกัดอยู่ในแผนกนี้`,
-          );
-        }
-      }
-
-      if (unitsToDelete.length > 0) {
-        const deleteIds = unitsToDelete.map((u) => u.org_id);
-        await this.db.queryTx(
-          client,
-          'UPDATE organizations SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE org_id = ANY($1)',
-          [deleteIds],
-        );
-      }
-
-      // ขั้นตอน D: อัปเดตแผนกเดิม หรือสร้างแผนกใหม่เพิ่มเข้ามา
+      // ขั้นตอน B: อัปเดตหน่วยงานย่อย หรือสร้างหน่วยงานย่อยใหม่ (หากมีการส่งมา)
       const processedUnits = [];
-      for (const unit of dto.units) {
-        const trimmedUnitName = unit.org_name.trim();
-        if (!trimmedUnitName) {
-          throw new BadRequestException('ชื่อหน่วยงานย่อย/แผนกไม่สามารถเป็นช่องว่างได้');
-        }
-
-        if (unit.org_id) {
-          // แผนกเดิม: ตรวจสอบความถูกต้องและอัปเดตข้อมูล
-          const unitRecord = await this.db.queryTx(client, 'SELECT * FROM organizations WHERE org_id = $1 AND is_active = 1', [unit.org_id]);
-          if (unitRecord.length === 0 || unitRecord[0].parent_id !== branchId) {
-            throw new BadRequestException(`หน่วยงานย่อยรหัส ${unit.org_id} ไม่ได้อยู่ภายใต้สาขาหลักนี้`);
+      if (dto.units && dto.units.length > 0) {
+        for (const unit of dto.units) {
+          const trimmedUnitName = unit.org_name.trim();
+          if (!trimmedUnitName) {
+            throw new BadRequestException('ชื่อหน่วยงานย่อย/แผนกไม่สามารถเป็นช่องว่างได้');
           }
 
-          await this.db.update(
-            'organizations',
-            {
-              org_name: trimmedUnitName,
-              sort_order: unit.sort_order ?? 0,
-              is_active: unit.is_active ?? unitRecord[0].is_active,
-              updated_at: FncCustom.dateNow()
-            },
-            { org_id: unit.org_id },
-            client,
-          );
+          if (unit.org_id) {
+            // แผนกเดิม: ตรวจสอบความถูกต้องและอัปเดตข้อมูล
+            // ดึงข้อมูลเดิมรวมถึงตัวที่ is_active = 0 ด้วย เผื่ออัปเดตกลับมาเปิดใช้งาน
+            const unitRecord = await this.db.queryTx(
+              client,
+              'SELECT * FROM organizations WHERE org_id = $1',
+              [unit.org_id],
+            );
+            if (unitRecord.length === 0 || unitRecord[0].parent_id !== branchId) {
+              throw new BadRequestException(`หน่วยงานย่อยรหัส ${unit.org_id} ไม่ได้อยู่ภายใต้สาขาหลักนี้`);
+            }
 
-          processedUnits.push({
-            org_id: unit.org_id,
-            org_name: trimmedUnitName,
-            parent_id: branchId,
-            sort_order: unit.sort_order ?? 0,
-            level: unitRecord[0].level,
-            is_active: unit.is_active ?? unitRecord[0].is_active,
-          });
-        } else {
-          // แผนกใหม่: บันทึกข้อมูลเพิ่ม
-          const newUnit = await this.db.insert(
-            'organizations',
-            {
+            // ตรวจสอบความปลอดภัยกรณีสั่งปิดใช้งาน/ลบ (is_active = 0)
+            if (unit.is_active === 0 && unitRecord[0].is_active === 1) {
+              const assignedUsers = await this.db.queryTx(
+                client,
+                'SELECT * FROM user_organizations WHERE org_id = $1',
+                [unit.org_id],
+              );
+              if (assignedUsers.length > 0) {
+                throw new BadRequestException(
+                  `ไม่สามารถปิดใช้งานแผนก "${trimmedUnitName}" ได้ เนื่องจากยังมีพนักงานผูกสังกัดอยู่`,
+                );
+              }
+            }
+
+            await this.db.update(
+              'organizations',
+              {
+                org_name: trimmedUnitName,
+                sort_order: unit.sort_order ?? 0,
+                is_active: unit.is_active ?? unitRecord[0].is_active,
+                updated_at: FncCustom.dateNow()
+              },
+              { org_id: unit.org_id },
+              client,
+            );
+
+            processedUnits.push({
+              org_id: unit.org_id,
               org_name: trimmedUnitName,
               parent_id: branchId,
               sort_order: unit.sort_order ?? 0,
-              level: 2,
-              is_active: unit.is_active ?? 1,
-            },
-            client,
-          );
-          processedUnits.push(newUnit);
+              level: unitRecord[0].level,
+              is_active: unit.is_active ?? unitRecord[0].is_active,
+            });
+          } else {
+            // แผนกใหม่: บันทึกข้อมูลเพิ่ม
+            const newUnit = await this.db.insert(
+              'organizations',
+              {
+                org_name: trimmedUnitName,
+                parent_id: branchId,
+                sort_order: unit.sort_order ?? 0,
+                level: 2,
+                is_active: unit.is_active ?? 1,
+              },
+              client,
+            );
+            processedUnits.push(newUnit);
+          }
         }
       }
 

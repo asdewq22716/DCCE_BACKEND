@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -18,8 +19,9 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
     PermissionsModule,
     OrganizationsModule,
     AuditLogsModule,
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

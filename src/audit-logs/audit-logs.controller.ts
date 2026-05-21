@@ -9,7 +9,9 @@ export class AuditLogsController {
   constructor(private readonly auditLogsService: AuditLogsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'ดึงรายการประวัติกิจกรรมทั้งหมด (พร้อมฟิลเตอร์และการแบ่งหน้า)' })
+  @ApiOperation({
+    summary: 'ดึงรายการประวัติกิจกรรมทั้งหมด (พร้อมฟิลเตอร์และการแบ่งหน้า)',
+  })
   findAll(@Query() query: AuditLogQueryDto) {
     return this.auditLogsService.findAll(query);
   }

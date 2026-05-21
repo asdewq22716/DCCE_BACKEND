@@ -19,4 +19,17 @@ export class FncCustom {
   static dateNowISOString(): string {
     return new Date().toISOString();
   }
+
+  /**
+   * ดึง AuditContext จาก Request object
+   * @param req Request
+   * @returns AuditContext
+   */
+  static getAuditContext(req: any) {
+    return {
+      userId: req.user?.userId || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+  }
 }

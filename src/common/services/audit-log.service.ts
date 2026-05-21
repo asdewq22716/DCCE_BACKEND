@@ -8,12 +8,12 @@ export interface AuditContext {
 }
 
 export interface AuditPayload {
-  actionType: string;    // เช่น 'CREATE', 'UPDATE', 'DELETE'
-  moduleName: string;    // เช่น 'organizations'
-  recordId: string;      // เช่น ID ของข้อมูลหลัก
-  oldData?: any;         // ข้อมูลดิบก่อนทำการแก้ไข
-  newData?: any;         // ข้อมูลดิบหลังทำการแก้ไข
-  remark?: string;       // หมายเหตุ/เหตุผลการแก้ไข
+  actionType: string; // เช่น 'CREATE', 'UPDATE', 'DELETE'
+  moduleName: string; // เช่น 'organizations'
+  recordId: string; // เช่น ID ของข้อมูลหลัก
+  oldData?: any; // ข้อมูลดิบก่อนทำการแก้ไข
+  newData?: any; // ข้อมูลดิบหลังทำการแก้ไข
+  remark?: string; // หมายเหตุ/เหตุผลการแก้ไข
 }
 
 @Injectable()

@@ -4,7 +4,7 @@ import { AuditLogQueryDto } from './dto/audit-log-query.dto';
 
 @Injectable()
 export class AuditLogsService {
-  constructor(private readonly db: FncDB) { }
+  constructor(private readonly db: FncDB) {}
 
   /**
    * ดึงรายการประวัติกิจกรรมทั้งหมด พร้อมตัวกรองและการแบ่งหน้าแบบยืดหยุ่น
@@ -99,7 +99,9 @@ export class AuditLogsService {
         },
       };
     } catch (err: any) {
-      throw new BadRequestException(`ไม่สามารถดึงข้อมูลประวัติกิจกรรมได้: ${err.message}`);
+      throw new BadRequestException(
+        `ไม่สามารถดึงข้อมูลประวัติกิจกรรมได้: ${err.message}`,
+      );
     }
   }
 

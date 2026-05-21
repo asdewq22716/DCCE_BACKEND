@@ -92,9 +92,7 @@ export class FncDB {
           isValueValid = cond.if;
         } else {
           isValueValid =
-            cond.if !== undefined &&
-            cond.if !== null &&
-            cond.if !== '';
+            cond.if !== undefined && cond.if !== null && cond.if !== '';
         }
       }
 

@@ -5,7 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FncDB } from 'src/common/services/fnc-db.service';
-import { AuditLogService, AuditContext } from 'src/common/services/audit-log.service';
+import {
+  AuditLogService,
+  AuditContext,
+} from 'src/common/services/audit-log.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignPermissionsDto } from './dto/assign-permissions.dto';
@@ -45,7 +48,11 @@ export class RolesService {
             client,
           );
 
-          const updatedRole = { ...role, is_active: 1, description: dto.description || role.description };
+          const updatedRole = {
+            ...role,
+            is_active: 1,
+            description: dto.description || role.description,
+          };
 
           await this.auditLog.log(
             client,
@@ -250,9 +257,9 @@ export class RolesService {
     try {
       // ขั้นตอน A: ลบความสัมพันธ์สิทธิ์เดิมออกทั้งหมด
       await this.db.queryTx(
+        client,
         'DELETE FROM role_permissions WHERE role_id = $1',
         [roleId],
-        client,
       );
 
       // ขั้นตอน B: เพิ่มความสัมพันธ์สิทธิ์ใหม่ (ถ้ามีส่งมา)
@@ -264,7 +271,9 @@ export class RolesService {
             [permId],
           );
           if (permCheck.length === 0) {
-            throw new BadRequestException(`ไม่พบรหัสสิทธิ์ ${permId} ในระบบ หรือรหัสสิทธิ์ดังกล่าวไม่ได้ใช้งานแล้ว`);
+            throw new BadRequestException(
+              `ไม่พบรหัสสิทธิ์ ${permId} ในระบบ หรือรหัสสิทธิ์ดังกล่าวไม่ได้ใช้งานแล้ว`,
+            );
           }
 
           await this.db.insert(

@@ -15,6 +15,8 @@ import { OrganizationsService } from './organizations.service';
 import { AssignUserDto } from './dto/assign-user.dto';
 import { CreateBranchWithUnitsDto } from './dto/create-branch-with-units.dto';
 import { UpdateBranchWithUnitsDto } from './dto/update-branch-with-units.dto';
+import { CreateUnitDto } from './dto/create-unit.dto';
+import { UpdateUnitDetailDto } from './dto/update-unit-detail.dto';
 import { BranchQueryDto } from './dto/organizations-queries.dto';
 import { OrganizationType } from './types/organization.type';
 
@@ -24,7 +26,10 @@ export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) { }
 
   @Post('branches-with-units')
-  @ApiOperation({ summary: 'สร้างสาขาหลักพร้อมจัดตั้งหน่วยงานย่อยรวดเดียว (Bulk Insert ด้วย Transaction)' })
+  @ApiOperation({
+    summary:
+      'สร้างสาขาหลักพร้อมจัดตั้งหน่วยงานย่อยรวดเดียว (Bulk Insert ด้วย Transaction)',
+  })
   createBranchWithUnits(
     @Req() req: any,
     @Body() dto: CreateBranchWithUnitsDto,
@@ -38,7 +43,10 @@ export class OrganizationsController {
   }
 
   @Put('branches-with-units')
-  @ApiOperation({ summary: 'แก้ไขสาขาหลักพร้อมปรับแต่งหน่วยงานย่อยทั้งหมดรวดเดียว (Bulk Upsert & Delete ด้วย Transaction)' })
+  @ApiOperation({
+    summary:
+      'แก้ไขสาขาหลักพร้อมปรับแต่งหน่วยงานย่อยทั้งหมดรวดเดียว (Bulk Upsert & Delete ด้วย Transaction)',
+  })
   updateBranchWithUnits(
     @Req() req: any,
     @Body() dto: UpdateBranchWithUnitsDto,
@@ -52,18 +60,22 @@ export class OrganizationsController {
   }
 
   @Get('branches')
-  @ApiOperation({ summary: 'ดึงรายชื่อสาขาหลักทั้งหมดพร้อมแผนกย่อย (หรือเจาะจงเฉพาะสาขาหลักรายตัวผ่าน Query ?id=18)' })
-  findAllBranches(@Query() query: BranchQueryDto): Promise<OrganizationType | OrganizationType[]> {
+  @ApiOperation({
+    summary:
+      'ดึงรายชื่อสาขาหลักทั้งหมดพร้อมแผนกย่อย (หรือเจาะจงเฉพาะสาขาหลักรายตัวผ่าน Query ?id=18)',
+  })
+  findAllBranches(
+    @Query() query: BranchQueryDto,
+  ): Promise<OrganizationType | OrganizationType[]> {
     const branchId = query.id ? parseInt(query.id, 10) : undefined;
     return this.organizationsService.findAllBranches(branchId);
   }
 
   @Delete('branches/:id')
-  @ApiOperation({ summary: 'ลบสาขาหลักพร้อมแผนกย่อยทั้งหมดภายใต้สาขานั้น (Soft Delete)' })
-  deleteBranch(
-    @Req() req: any,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
+  @ApiOperation({
+    summary: 'ลบสาขาหลักพร้อมแผนกย่อยทั้งหมดภายใต้สาขานั้น (Soft Delete)',
+  })
+  deleteBranch(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     const context = {
       userId: req.user?.userId || null,
       ipAddress: req.ip || req.connection?.remoteAddress || null,
@@ -84,5 +96,45 @@ export class OrganizationsController {
   @ApiOperation({ summary: 'ถอดถอนผู้ใช้งานออกจากสังกัดหน่วยงาน/กรมย่อย' })
   removeUserFromOrg(@Body() dto: AssignUserDto) {
     return this.organizationsService.removeUserFromOrg(dto);
+  }
+
+  // ---------- Unit CRUD Endpoints ----------
+
+  @Post('units')
+  @ApiOperation({ summary: 'สร้างหน่วยงานย่อยเดี่ยว' })
+  createUnit(
+    @Req() req: any,
+    @Body() dto: CreateUnitDto,
+  ): Promise<OrganizationType> {
+    const context = {
+      userId: req.user?.userId || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+    return this.organizationsService.createUnit(dto, context);
+  }
+
+  @Put('units/:id')
+  @ApiOperation({ summary: 'แก้ไขข้อมูลหน่วยงานย่อยเดี่ยว' })
+  updateUnit(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUnitDetailDto,
+  ) {
+    const context = {
+      userId: req.user?.userId || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+    return this.organizationsService.updateUnit(id, dto, context);
+  }
+
+  @Get('units')
+  @ApiOperation({
+    summary:
+      'ดึงข้อมูลหน่วยงานย่อยทั้งหมด (ระดับ level = 2 และเป็นตัวที่เปิดใช้งาน)',
+  })
+  findAllUnits(): Promise<OrganizationType[]> {
+    return this.organizationsService.findAllUnits();
   }
 }

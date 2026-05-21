@@ -11,21 +11,12 @@ import { Type } from 'class-transformer';
 
 export class UpdateUnitDto {
   @ApiProperty({
-    description: 'รหัส ID ของแผนกย่อยเดิม (หากเป็นแผนกที่แอดมินกดเพิ่มมาใหม่ ให้ปล่อยเป็น null หรือไม่ส่งค่านี้มา)',
+    description: 'รหัส ID ของหน่วยงานย่อย',
     example: 2,
-    required: false,
   })
   @IsNumber()
-  @IsOptional()
-  org_id?: number;
-
-  @ApiProperty({
-    description: 'ชื่อของหน่วยงานย่อย/แผนก',
-    example: 'กองบริหารจัดการน้ำ (แก้ไขแล้ว)',
-  })
-  @IsString()
   @IsNotEmpty()
-  org_name: string;
+  org_id: number;
 
   @ApiProperty({
     description: 'ลำดับการแสดงผลของแผนก',
@@ -81,14 +72,14 @@ export class UpdateBranchWithUnitsDto {
   remark: string;
 
   @ApiProperty({
-    description: 'รายชื่อหน่วยงานย่อยที่ต้องการเพิ่ม แก้ไข หรือปิดใช้งาน (ส่งเฉพาะรายการที่ต้องการเปลี่ยนแปลงได้ แถวที่ไม่ได้ส่งมาจะไม่ได้รับผลกระทบใด ๆ)',
+    description:
+      'รายชื่อหน่วยงานย่อยที่ต้องการเพิ่ม แก้ไข หรือปิดใช้งาน (ส่งเฉพาะรายการที่ต้องการเปลี่ยนแปลงได้ แถวที่ไม่ได้ส่งมาจะไม่ได้รับผลกระทบใด ๆ)',
     type: [UpdateUnitDto],
     required: false,
     example: [
-      { org_id: 2, org_name: 'กองบริหารจัดการน้ำ (แก้ไขแล้ว)', sort_order: 1, is_active: 1 },
-      { org_id: 3, org_name: 'ศูนย์ภัยแล้งระดับเขต', sort_order: 2, is_active: 0 },
-      { org_name: 'กองเทคโนโลยีสารสนเทศ (หน่วยงานเพิ่มใหม่)', sort_order: 3, is_active: 1 }
-    ]
+      { org_id: 2, sort_order: 1, is_active: 1 },
+      { org_id: 3, sort_order: 2, is_active: 0 },
+    ],
   })
   @IsArray()
   @IsOptional()

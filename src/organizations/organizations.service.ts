@@ -152,11 +152,19 @@ export class OrganizationsService {
              o.sort_order,
              o.level,
              o.is_active,
+             o.unit_data_permissions,
+             o.unit_view_climate_index,
+             o.unit_view_ghg_emissions,
+             o.unit_edit_historical_data,
+             o.unit_approve_public_data,
+             o.unit_remark,
              COALESCE(COUNT(uo.user_id), 0)::int AS user_count
            FROM organizations o
            LEFT JOIN user_organizations uo ON o.org_id = uo.org_id
            WHERE o.parent_id = $1 AND o.is_active = 1
-           GROUP BY o.org_id, o.org_name, o.parent_id, o.sort_order, o.level, o.is_active
+           GROUP BY o.org_id, o.org_name, o.parent_id, o.sort_order, o.level, o.is_active,
+                    o.unit_data_permissions, o.unit_view_climate_index, o.unit_view_ghg_emissions,
+                    o.unit_edit_historical_data, o.unit_approve_public_data, o.unit_remark
            ORDER BY o.sort_order ASC, o.org_id ASC`,
           [id],
         );
@@ -176,6 +184,12 @@ export class OrganizationsService {
             level: u.level,
             is_active: u.is_active,
             user_count: u.user_count,
+            unit_data_permissions: u.unit_data_permissions,
+            unit_view_climate_index: u.unit_view_climate_index,
+            unit_view_ghg_emissions: u.unit_view_ghg_emissions,
+            unit_edit_historical_data: u.unit_edit_historical_data,
+            unit_approve_public_data: u.unit_approve_public_data,
+            unit_remark: u.unit_remark,
           })),
         };
       } else {
@@ -196,11 +210,19 @@ export class OrganizationsService {
              o.sort_order,
              o.level,
              o.is_active,
+             o.unit_data_permissions,
+             o.unit_view_climate_index,
+             o.unit_view_ghg_emissions,
+             o.unit_edit_historical_data,
+             o.unit_approve_public_data,
+             o.unit_remark,
              COALESCE(COUNT(uo.user_id), 0)::int AS user_count
            FROM organizations o
            LEFT JOIN user_organizations uo ON o.org_id = uo.org_id
            WHERE o.parent_id IS NOT NULL AND o.is_active = 1
-           GROUP BY o.org_id, o.org_name, o.parent_id, o.sort_order, o.level, o.is_active
+           GROUP BY o.org_id, o.org_name, o.parent_id, o.sort_order, o.level, o.is_active,
+                    o.unit_data_permissions, o.unit_view_climate_index, o.unit_view_ghg_emissions,
+                    o.unit_edit_historical_data, o.unit_approve_public_data, o.unit_remark
            ORDER BY o.sort_order ASC, o.org_id ASC`,
         );
 
@@ -216,6 +238,12 @@ export class OrganizationsService {
               level: unit.level,
               is_active: unit.is_active,
               user_count: unit.user_count,
+              unit_data_permissions: unit.unit_data_permissions,
+              unit_view_climate_index: unit.unit_view_climate_index,
+              unit_view_ghg_emissions: unit.unit_view_ghg_emissions,
+              unit_edit_historical_data: unit.unit_edit_historical_data,
+              unit_approve_public_data: unit.unit_approve_public_data,
+              unit_remark: unit.unit_remark,
             }));
         }
 
@@ -547,6 +575,12 @@ export class OrganizationsService {
           sort_order: dto.sort_order || 0,
           level: 2,
           is_active: 1,
+          unit_data_permissions: dto.unit_data_permissions ?? null,
+          unit_view_climate_index: dto.unit_view_climate_index ?? null,
+          unit_view_ghg_emissions: dto.unit_view_ghg_emissions ?? null,
+          unit_edit_historical_data: dto.unit_edit_historical_data ?? null,
+          unit_approve_public_data: dto.unit_approve_public_data ?? null,
+          unit_remark: dto.unit_remark ?? null,
         },
         client,
       );
@@ -575,6 +609,12 @@ export class OrganizationsService {
   }
 
   // 1.5 แก้ไขข้อมูลหน่วยงานย่อยแบบเดี่ยว
+  /**
+   * แก้ไขข้อมูลหน่วยงานย่อยแบบเดี่ยว
+   * @param id รหัสของหน่วยงานย่อยที่ต้องการอัปเดต (org_id)
+   * @param dto ข้อมูลฟิลด์ต่างๆ ที่ส่งมาอัปเดต (เช่น ชื่อ, ลำดับ, สิทธิ์การใช้งาน, หมายเหตุ)
+   * @param context ข้อมูลบริบทผู้ใช้งาน (User ID, IP, User Agent) เพื่อนำไปบันทึก Audit Log ประวัติการทำงาน
+   */
   async updateUnit(
     id: number,
     dto: UpdateUnitDetailDto,
@@ -622,21 +662,24 @@ export class OrganizationsService {
         }
       }
 
+      const existing = unitRecord[0];
+      const updateFields = {
+        org_name: trimmedUnitName,
+        parent_id: dto.parent_id ?? existing.parent_id,
+        sort_order: dto.sort_order ?? existing.sort_order,
+        is_active: targetIsActive,
+        unit_data_permissions: dto.unit_data_permissions ?? existing.unit_data_permissions,
+        unit_view_climate_index: dto.unit_view_climate_index ?? existing.unit_view_climate_index,
+        unit_view_ghg_emissions: dto.unit_view_ghg_emissions ?? existing.unit_view_ghg_emissions,
+        unit_edit_historical_data: dto.unit_edit_historical_data ?? existing.unit_edit_historical_data,
+        unit_approve_public_data: dto.unit_approve_public_data ?? existing.unit_approve_public_data,
+        unit_remark: dto.unit_remark ?? existing.unit_remark,
+        updated_at: FncCustom.dateNow(),
+      };
+
       await this.db.update(
         'organizations',
-        {
-          org_name: trimmedUnitName,
-          parent_id:
-            dto.parent_id !== undefined
-              ? dto.parent_id
-              : unitRecord[0].parent_id,
-          sort_order:
-            dto.sort_order !== undefined
-              ? dto.sort_order
-              : unitRecord[0].sort_order,
-          is_active: targetIsActive,
-          updated_at: FncCustom.dateNow(),
-        },
+        updateFields,
         { org_id: id },
         client,
       );
@@ -674,7 +717,9 @@ export class OrganizationsService {
   async findAllUnits(): Promise<OrganizationType[]> {
     try {
       const units = await this.db.query(
-        `SELECT org_id, org_name, parent_id, sort_order, level, is_active
+        `SELECT org_id, org_name, parent_id, sort_order, level, is_active,
+                unit_data_permissions, unit_view_climate_index, unit_view_ghg_emissions,
+                unit_edit_historical_data, unit_approve_public_data, unit_remark
          FROM organizations
          WHERE level = 2 AND is_active = 1
          ORDER BY org_id ASC`,

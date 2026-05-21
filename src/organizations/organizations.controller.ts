@@ -25,8 +25,16 @@ export class OrganizationsController {
 
   @Post('branches-with-units')
   @ApiOperation({ summary: 'สร้างสาขาหลักพร้อมจัดตั้งหน่วยงานย่อยรวดเดียว (Bulk Insert ด้วย Transaction)' })
-  createBranchWithUnits(@Body() dto: CreateBranchWithUnitsDto): Promise<OrganizationType> {
-    return this.organizationsService.createBranchWithUnits(dto);
+  createBranchWithUnits(
+    @Req() req: any,
+    @Body() dto: CreateBranchWithUnitsDto,
+  ): Promise<OrganizationType> {
+    const context = {
+      userId: req.user?.userId || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+    return this.organizationsService.createBranchWithUnits(dto, context);
   }
 
   @Put('branches-with-units')
@@ -52,8 +60,16 @@ export class OrganizationsController {
 
   @Delete('branches/:id')
   @ApiOperation({ summary: 'ลบสาขาหลักพร้อมแผนกย่อยทั้งหมดภายใต้สาขานั้น (Soft Delete)' })
-  deleteBranch(@Param('id', ParseIntPipe) id: number) {
-    return this.organizationsService.deleteBranch(id);
+  deleteBranch(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const context = {
+      userId: req.user?.userId || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+    return this.organizationsService.deleteBranch(id, context);
   }
 
   // ---------- User Assignment Endpoints ----------

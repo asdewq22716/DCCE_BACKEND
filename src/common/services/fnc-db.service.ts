@@ -42,6 +42,79 @@ export class FncDB {
     return result.rows;
   }
 
+  /**
+   * คิวรีข้อมูลโดยใช้การประกอบ SQL string จากส่วนประกอบต่าง ๆ (Select, Where, OrderBy, Limit, Offset)
+   */
+  async queryBuilder<T = any>(options: {
+    select: string;
+    where?: string | any[];
+    orderBy?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<T[]> {
+    let sql = options.select;
+    if (options.where) {
+      let whereClause = '';
+      if (typeof options.where === 'string') {
+        whereClause = options.where.trim();
+      } else if (Array.isArray(options.where)) {
+        whereClause = this.buildWhereFromArray(options.where);
+      }
+      if (whereClause !== '') {
+        sql += ` WHERE ${whereClause}`;
+      }
+    }
+    if (options.orderBy && options.orderBy.trim() !== '') {
+      sql += ` ORDER BY ${options.orderBy}`;
+    }
+    if (options.limit !== undefined && options.limit !== null) {
+      sql += ` LIMIT ${options.limit}`;
+    }
+    if (options.offset !== undefined && options.offset !== null) {
+      sql += ` OFFSET ${options.offset}`;
+    }
+    return this.query<T>(sql);
+  }
+
+  private buildWhereFromArray(whereArr: any[]): string {
+    const clauses: string[] = [];
+
+    for (const cond of whereArr) {
+      if (!cond) continue;
+
+      const hasIf = 'if' in cond;
+      let isValueValid = false;
+
+      if (hasIf) {
+        if (typeof cond.if === 'function') {
+          isValueValid = !!cond.if();
+        } else if (typeof cond.if === 'boolean') {
+          isValueValid = cond.if;
+        } else {
+          isValueValid =
+            cond.if !== undefined &&
+            cond.if !== null &&
+            cond.if !== '';
+        }
+      }
+
+      if (!hasIf || isValueValid) {
+        if (cond.fill) {
+          clauses.push(cond.fill);
+        }
+      }
+    }
+
+    return clauses.join(' AND ');
+  }
+
+  escape(val: any): any {
+    if (typeof val === 'string') {
+      return val.replace(/'/g, "''");
+    }
+    return val;
+  }
+
   async queryTx<T = any>(
     client: PoolClient,
     text: string,

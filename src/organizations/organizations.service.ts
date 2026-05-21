@@ -22,17 +22,17 @@ export class OrganizationsService {
   ) { }
 
   // 1.1 สร้างสาขาพร้อมหน่วยงานย่อยรวดเดียว (Bulk Insert ด้วย Database Transaction)
-  async createBranchWithUnits(dto: CreateBranchWithUnitsDto): Promise<OrganizationType> {
+  async createBranchWithUnits(
+    dto: CreateBranchWithUnitsDto,
+    context?: AuditContext,
+  ): Promise<OrganizationType> {
     const trimmedBranchName = dto.branch_name.trim();
     if (!trimmedBranchName) {
       throw new BadRequestException('ชื่อสาขาหลักไม่สามารถเป็นช่องว่างได้');
     }
 
-    const client = await this.db.startTransaction();
-
-    // เช็คว่ามีสาขาชื่อนี้ซ้ำกันในระบบอยู่แล้วหรือไม่ (เฉพาะที่ยังไม่ถูกลบ is_active = 1)
-    const existingBranch = await this.db.queryTx(
-      client,
+    // เช็คว่ามีสาขาชื่อนี้ซ้ำกันในระบบอยู่แล้วหรือไม่ (ใช้ query ทั่วไป ไม่ถือครอง connection client ค้างไว้)
+    const existingBranch = await this.db.query(
       'SELECT * FROM organizations WHERE org_name = $1 AND parent_id IS NULL AND is_active = 1',
       [trimmedBranchName],
     );
@@ -40,6 +40,8 @@ export class OrganizationsService {
     if (existingBranch.length > 0) {
       throw new BadRequestException('ชื่อสาขาหลักนี้มีอยู่ในระบบแล้ว');
     }
+
+    const client = await this.db.startTransaction();
 
     try {
       // ขั้นตอน A: บันทึกสาขาหลัก (level = 1, is_active = 1)
@@ -80,6 +82,20 @@ export class OrganizationsService {
           insertedUnits.push(insertedUnit);
         }
       }
+
+      // บันทึกกิจกรรมลงตาราง Log กลางผ่าน AuditLogService แบบ Global
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'CREATE',
+          moduleName: 'organizations',
+          recordId: branch.org_id.toString(),
+          oldData: null,
+          newData: { ...branch, units: insertedUnits },
+          remark: `สร้างสาขาหลัก "${trimmedBranchName}" พร้อมหน่วยงานย่อย ${insertedUnits.length} แห่ง`,
+        },
+        context,
+      );
 
       await this.db.commit(client);
 
@@ -415,7 +431,7 @@ export class OrganizationsService {
   }
 
   // 1.3 ลบสาขาหลักพร้อมแผนกย่อยทั้งหมดภายใต้สาขานั้น (Soft Delete ด้วย Database Transaction)
-  async deleteBranch(id: number) {
+  async deleteBranch(id: number, context?: AuditContext) {
     const branchExists = await this.db.select('organizations', { org_id: id, is_active: 1 });
     if (branchExists.length === 0) {
       throw new NotFoundException('ไม่พบข้อมูลสาขาหลักที่ระบุ');
@@ -455,6 +471,23 @@ export class OrganizationsService {
         client,
         'UPDATE organizations SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE org_id = ANY($1)',
         [targetIds],
+      );
+
+      // บันทึกกิจกรรมลงตาราง Log กลางผ่าน AuditLogService แบบ Global
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'DELETE',
+          moduleName: 'organizations',
+          recordId: id.toString(),
+          oldData: {
+            branch: branchExists[0],
+            childUnits: childUnits,
+          },
+          newData: null,
+          remark: `ลบสาขาหลัก "${branchExists[0].org_name}" พร้อมหน่วยงานย่อยภายใต้สาขาทั้งหมด`,
+        },
+        context,
       );
 
       await this.db.commit(client);

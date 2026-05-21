@@ -4,7 +4,7 @@ import { AuditLogQueryDto } from './dto/audit-log-query.dto';
 
 @Injectable()
 export class AuditLogsService {
-  constructor(private readonly db: FncDB) {}
+  constructor(private readonly db: FncDB) { }
 
   /**
    * ดึงรายการประวัติกิจกรรมทั้งหมด พร้อมตัวกรองและการแบ่งหน้าแบบยืดหยุ่น
@@ -15,79 +15,77 @@ export class AuditLogsService {
       const limit = query.limit && query.limit > 0 ? query.limit : 10;
       const offset = (page - 1) * limit;
 
-      let whereClause = '1=1';
-      const params: any[] = [];
-      let paramCounter = 1;
+      // Escape ตัวแปรที่เป็นสตริงทั้งหมดเพื่อป้องกัน SQL syntax error และ sql injection
+      const moduleName = this.db.escape(query.moduleName);
+      const actionType = this.db.escape(query.actionType);
+      const recordId = this.db.escape(query.recordId);
+      const search = this.db.escape(query.search);
+      const startDate = this.db.escape(query.startDate);
+      const endDate = this.db.escape(query.endDate);
+      const createdBy = query.createdBy; // เป็น number ไม่ต้อง escape สตริง
 
-      if (query.moduleName) {
-        whereClause += ` AND al.module_name = $${paramCounter++}`;
-        params.push(query.moduleName);
-      }
-
-      if (query.actionType) {
-        whereClause += ` AND al.action_type = $${paramCounter++}`;
-        params.push(query.actionType);
-      }
-
-      if (query.recordId) {
-        whereClause += ` AND al.record_id = $${paramCounter++}`;
-        params.push(query.recordId);
-      }
-
-      if (query.createdBy) {
-        whereClause += ` AND al.created_by = $${paramCounter++}`;
-        params.push(query.createdBy);
-      }
-
-      if (query.startDate) {
-        whereClause += ` AND al.created_at >= $${paramCounter++}`;
-        params.push(query.startDate);
-      }
-
-      if (query.endDate) {
-        whereClause += ` AND al.created_at <= $${paramCounter++}`;
-        params.push(query.endDate);
-      }
-
-      if (query.search) {
-        whereClause += ` AND (al.remark ILIKE $${paramCounter} OR al.module_name ILIKE $${paramCounter})`;
-        params.push(`%${query.search}%`);
-        paramCounter++;
-      }
+      const where = [
+        {
+          if: moduleName,
+          fill: `al.module_name = '${moduleName}'`,
+        },
+        {
+          if: actionType,
+          fill: `al.action_type = '${actionType}'`,
+        },
+        {
+          if: recordId,
+          fill: `al.record_id = '${recordId}'`,
+        },
+        {
+          if: createdBy,
+          fill: `al.created_by = ${createdBy}`,
+        },
+        {
+          if: startDate,
+          fill: `al.created_at >= '${startDate}'`,
+        },
+        {
+          if: endDate,
+          fill: `al.created_at <= '${endDate}'`,
+        },
+        {
+          if: search,
+          fill: `(al.remark ILIKE '%${search}%' OR al.module_name ILIKE '%${search}%')`,
+        },
+      ];
 
       // 1. ดึงจำนวนรายการทั้งหมดเพื่อคำนวณจำนวนหน้า
-      const countQuery = `
-        SELECT COUNT(*)::int as total 
-        FROM audit_logs al 
-        WHERE ${whereClause}
-      `;
-      const countResult = await this.db.query(countQuery, params);
+      const countResult = await this.db.queryBuilder({
+        select: 'SELECT COUNT(*)::int as total FROM audit_logs al',
+        where,
+      });
       const totalItems = countResult[0]?.total || 0;
 
       // 2. ดึงรายการข้อมูล Log พร้อมดึง username ของคนทำรายการ
-      const dataQuery = `
-        SELECT 
-          al.log_id,
-          al.created_by,
-          u.username AS creator_username,
-          al.action_type,
-          al.module_name,
-          al.record_id,
-          al.old_data,
-          al.new_data,
-          al.remark,
-          al.ip_address,
-          al.user_agent,
-          al.created_at
-        FROM audit_logs al
-        LEFT JOIN users u ON al.created_by = u.user_id
-        WHERE ${whereClause}
-        ORDER BY al.created_at DESC
-        LIMIT $${paramCounter++} OFFSET $${paramCounter++}
-      `;
-      
-      const selectParams = [...params, limit, offset];
-      const items = await this.db.query(dataQuery, selectParams);
+      const items = await this.db.queryBuilder({
+        select: `
+          SELECT 
+            al.log_id,
+            al.created_by,
+            u.username AS creator_username,
+            al.action_type,
+            al.module_name,
+            al.record_id,
+            al.old_data,
+            al.new_data,
+            al.remark,
+            al.ip_address,
+            al.user_agent,
+            al.created_at
+          FROM audit_logs al
+          LEFT JOIN users u ON al.created_by = u.user_id
+        `,
+        where,
+        orderBy: 'al.created_at DESC',
+        limit,
+        offset,
+      });
       const totalPages = Math.ceil(totalItems / limit);
 
       return {

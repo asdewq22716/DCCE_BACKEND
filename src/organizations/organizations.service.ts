@@ -11,6 +11,8 @@ import {
 } from 'src/common/services/audit-log.service';
 import { FncCustom } from 'src/common/fnc-custom';
 import { AssignUserDto } from './dto/assign-user.dto';
+import { AssignQueryDto } from './dto/assign-query.dto';
+import { OrgAccessDto } from './dto/org-access.dto';
 import { CreateBranchWithUnitsDto } from './dto/create-branch-with-units.dto';
 import { UpdateBranchWithUnitsDto } from './dto/update-branch-with-units.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
@@ -267,10 +269,58 @@ export class OrganizationsService {
     }
   }
 
-  // ---------- 7. User Organizations Assignment (ผูกสังกัดผู้ใช้งาน) ----------
+  // ========== 7. User Organizations Assignment (ผูกสังกัดผู้ใช้งาน) ==========
 
-  // 7.1 ผูกผู้ใช้งานเข้าสังกัดหน่วยงาน
-  async assignUserToOrg(dto: AssignUserDto) {
+  // 7.0 ดึงรายชื่อผู้ใช้งานทั้งหมดพร้อมสังกัดหลัก (สาขา + หน่วยงาน)
+  async getUsersAssignmentList(query: AssignQueryDto) {
+    try {
+      let sql = `
+        SELECT
+          u.user_id,
+          u.full_name,
+          u.sso_email AS email,
+          org_unit.org_id AS unit_id,
+          org_unit.org_name AS unit_name,
+          org_branch.org_id AS branch_id,
+          org_branch.org_name AS branch_name
+        FROM users u
+        LEFT JOIN user_organizations uo ON u.user_id = uo.user_id AND uo.is_primary = 1
+        LEFT JOIN organizations org_unit ON uo.org_id = org_unit.org_id AND org_unit.is_active = 1
+        LEFT JOIN organizations org_branch ON org_unit.parent_id = org_branch.org_id AND org_branch.is_active = 1
+        WHERE u.is_active = 1
+      `;
+      const params: any[] = [];
+      let paramIndex = 1;
+
+      if (query.name) {
+        sql += ` AND u.full_name ILIKE $${paramIndex}`;
+        params.push(`%${query.name}%`);
+        paramIndex++;
+      }
+      if (query.branch_id) {
+        sql += ` AND org_branch.org_id = $${paramIndex}`;
+        params.push(parseInt(query.branch_id, 10));
+        paramIndex++;
+      }
+      if (query.unit_id) {
+        sql += ` AND org_unit.org_id = $${paramIndex}`;
+        params.push(parseInt(query.unit_id, 10));
+        paramIndex++;
+      }
+
+      sql += ` ORDER BY u.user_id ASC`;
+
+      return await this.db.query(sql, params);
+    } catch (err: any) {
+      this.logger.error(`Get users assignment list error: ${err.message}`);
+      throw new BadRequestException(
+        'ไม่สามารถดึงข้อมูลรายชื่อผู้ใช้งานได้',
+      );
+    }
+  }
+
+  // 7.1 ผูกผู้ใช้งานเข้าสังกัดหลัก (is_primary = 1)
+  async assignUserToOrg(dto: AssignUserDto, context?: AuditContext) {
     const userExists = await this.db.select('users', { user_id: dto.user_id });
     if (userExists.length === 0) {
       throw new NotFoundException('ไม่พบข้อมูลผู้ใช้งานที่ระบุ');
@@ -278,46 +328,321 @@ export class OrganizationsService {
 
     await this.findOneOrg(dto.org_id);
 
-    const existing = await this.db.select('user_organizations', {
-      user_id: dto.user_id,
-      org_id: dto.org_id,
-    });
-    if (existing.length > 0) {
-      throw new BadRequestException(
-        'ผู้ใช้งานรายนี้มีรายชื่อผูกเข้าสังกัดหน่วยงานนี้อยู่แล้ว',
-      );
-    }
+    const client = await this.db.startTransaction();
 
     try {
-      return await this.db.insert('user_organizations', dto);
+      // ดึงข้อมูลสังกัดหลักเดิม (ถ้ามี) สำหรับ audit log
+      const oldPrimary = await this.db.queryTx(
+        client,
+        `SELECT uo.*, o.org_name
+         FROM user_organizations uo
+         LEFT JOIN organizations o ON uo.org_id = o.org_id
+         WHERE uo.user_id = $1 AND uo.is_primary = 1`,
+        [dto.user_id],
+      );
+
+      // ลบสังกัดหลักเดิม (ถ้ามี)
+      if (oldPrimary.length > 0) {
+        await this.db.queryTx(
+          client,
+          'DELETE FROM user_organizations WHERE user_id = $1 AND is_primary = 1',
+          [dto.user_id],
+        );
+      }
+
+      // ตรวจสอบว่ามี record อยู่แล้วหรือไม่ (อาจเป็น access เดิม is_primary = 0)
+      const existingAccess = await this.db.queryTx(
+        client,
+        'SELECT * FROM user_organizations WHERE user_id = $1 AND org_id = $2',
+        [dto.user_id, dto.org_id],
+      );
+
+      if (existingAccess.length > 0) {
+        // ถ้ามี access อยู่แล้ว ให้อัปเกรดเป็น primary
+        await this.db.queryTx(
+          client,
+          'UPDATE user_organizations SET is_primary = 1 WHERE user_id = $1 AND org_id = $2',
+          [dto.user_id, dto.org_id],
+        );
+      } else {
+        // ถ้ายังไม่มี ให้ insert ใหม่
+        await this.db.queryTx(
+          client,
+          'INSERT INTO user_organizations (user_id, org_id, is_primary) VALUES ($1, $2, 1)',
+          [dto.user_id, dto.org_id],
+        );
+      }
+
+      // ดึงข้อมูลสังกัดใหม่สำหรับ audit log
+      const newPrimary = await this.db.queryTx(
+        client,
+        `SELECT uo.*, o.org_name
+         FROM user_organizations uo
+         LEFT JOIN organizations o ON uo.org_id = o.org_id
+         WHERE uo.user_id = $1 AND uo.is_primary = 1`,
+        [dto.user_id],
+      );
+
+      // บันทึก audit log
+      await this.auditLog.log(
+        client,
+        {
+          actionType: oldPrimary.length > 0 ? 'UPDATE' : 'CREATE',
+          moduleName: 'user_organizations',
+          recordId: dto.user_id.toString(),
+          oldData: oldPrimary.length > 0 ? oldPrimary[0] : null,
+          newData: newPrimary[0],
+          remark: dto.remark || undefined,
+        },
+        context,
+      );
+
+      await this.db.commit(client);
+
+      return {
+        message: 'กำหนดสังกัดหลักเรียบร้อยแล้ว',
+        user_id: dto.user_id,
+        org_id: dto.org_id,
+      };
     } catch (err: any) {
+      await this.db.rollback(client);
       this.logger.error(`Assign user to organization error: ${err.message}`);
+      throw err;
+    }
+  }
+
+  // 7.2 ถอดถอนผู้ใช้งานออกจากสังกัดหลัก (is_primary = 1)
+  async removeUserFromOrg(dto: AssignUserDto, context?: AuditContext) {
+    const client = await this.db.startTransaction();
+
+    try {
+      // ดึงข้อมูลเดิมก่อนลบ
+      const existing = await this.db.queryTx(
+        client,
+        `SELECT uo.*, o.org_name
+         FROM user_organizations uo
+         LEFT JOIN organizations o ON uo.org_id = o.org_id
+         WHERE uo.user_id = $1 AND uo.org_id = $2 AND uo.is_primary = 1`,
+        [dto.user_id, dto.org_id],
+      );
+
+      if (existing.length === 0) {
+        throw new NotFoundException(
+          'ไม่พบข้อมูลสังกัดหลักของผู้ใช้ในหน่วยงานที่ระบุ',
+        );
+      }
+
+      await this.db.queryTx(
+        client,
+        'DELETE FROM user_organizations WHERE user_id = $1 AND org_id = $2 AND is_primary = 1',
+        [dto.user_id, dto.org_id],
+      );
+
+      // บันทึก audit log
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'DELETE',
+          moduleName: 'user_organizations',
+          recordId: dto.user_id.toString(),
+          oldData: existing[0],
+          newData: null,
+          remark: dto.remark || 'ถอดถอนสังกัดหลัก',
+        },
+        context,
+      );
+
+      await this.db.commit(client);
+      return { message: 'ถอดถอนผู้ใช้งานออกจากสังกัดหลักเรียบร้อยแล้ว' };
+    } catch (err: any) {
+      await this.db.rollback(client);
+      this.logger.error(`Remove user from organization error: ${err.message}`);
+      if (err instanceof NotFoundException) throw err;
       throw new BadRequestException(
-        'ไม่สามารถดำเนินการจัดสรรผู้ใช้งานเข้าสังกัดได้',
+        'ไม่สามารถดำเนินการถอดถอนผู้ใช้งานออกจากหน่วยงานได้',
       );
     }
   }
 
-  // 7.2 ถอดถอนผู้ใช้งานออกจากสังกัดหน่วยงาน
-  async removeUserFromOrg(dto: AssignUserDto) {
+  // 7.3 ดึงประวัติการย้ายสังกัดหลักของผู้ใช้งาน
+  async getUserAssignmentHistory(userId: number) {
     try {
-      const deletedCount = await this.db.delete('user_organizations', {
-        user_id: dto.user_id,
-        org_id: dto.org_id,
-      });
-      if (deletedCount === 0) {
-        throw new NotFoundException(
-          'ไม่พบข้อมูลการสังกัดผู้ใช้ในหน่วยงานที่ต้องการถอดถอน',
+      const userExists = await this.db.select('users', { user_id: userId });
+      if (userExists.length === 0) {
+        throw new NotFoundException('ไม่พบข้อมูลผู้ใช้งานที่ระบุ');
+      }
+
+      const history = await this.db.query(
+        `SELECT
+          log_id,
+          action_type,
+          old_data,
+          new_data,
+          remark,
+          created_by,
+          created_at
+        FROM audit_logs
+        WHERE module_name = 'user_organizations' AND record_id = $1
+        ORDER BY created_at DESC`,
+        [userId.toString()],
+      );
+      return history;
+    } catch (err: any) {
+      if (err instanceof NotFoundException) throw err;
+      this.logger.error(
+        `Get user assignment history error: ${err.message}`,
+      );
+      throw new BadRequestException(
+        'ไม่สามารถดึงประวัติการย้ายสังกัดได้',
+      );
+    }
+  }
+
+  // ========== 8. Organization Access (สิทธิ์เข้าถึงองค์กรเพิ่มเติม) ==========
+
+  // 8.1 เพิ่มสิทธิ์เข้าถึงองค์กรเพิ่มเติม (is_primary = 0)
+  async addOrgAccess(dto: OrgAccessDto, context?: AuditContext) {
+    const userExists = await this.db.select('users', { user_id: dto.user_id });
+    if (userExists.length === 0) {
+      throw new NotFoundException('ไม่พบข้อมูลผู้ใช้งานที่ระบุ');
+    }
+
+    await this.findOneOrg(dto.org_id);
+
+    // ตรวจสอบว่ามีอยู่แล้วหรือไม่ (ทั้ง primary และ access)
+    const existing = await this.db.query(
+      'SELECT * FROM user_organizations WHERE user_id = $1 AND org_id = $2',
+      [dto.user_id, dto.org_id],
+    );
+    if (existing.length > 0) {
+      if (existing[0].is_primary === 1) {
+        throw new BadRequestException(
+          'หน่วยงานนี้เป็นสังกัดหลักของผู้ใช้งานอยู่แล้ว',
         );
       }
-      return { message: 'ถอดถอนผู้ใช้งานออกจากหน่วยงานเรียบร้อยแล้ว' };
-    } catch (err: any) {
-      this.logger.error(`Remove user from organization error: ${err.message}`);
-      if (err instanceof NotFoundException) {
-        throw err;
-      }
       throw new BadRequestException(
-        'ไม่สามารถดำเนินการถอดถอนผู้ใช้งานออกจากหน่วยงานได้',
+        'ผู้ใช้งานมีสิทธิ์เข้าถึงหน่วยงานนี้อยู่แล้ว',
+      );
+    }
+
+    const client = await this.db.startTransaction();
+
+    try {
+      await this.db.queryTx(
+        client,
+        'INSERT INTO user_organizations (user_id, org_id, is_primary) VALUES ($1, $2, 0)',
+        [dto.user_id, dto.org_id],
+      );
+
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'CREATE',
+          moduleName: 'user_org_access',
+          recordId: dto.user_id.toString(),
+          oldData: null,
+          newData: { user_id: dto.user_id, org_id: dto.org_id, is_primary: 0 },
+          remark: dto.remark || 'เพิ่มสิทธิ์เข้าถึงหน่วยงาน',
+        },
+        context,
+      );
+
+      await this.db.commit(client);
+
+      return {
+        message: 'เพิ่มสิทธิ์เข้าถึงหน่วยงานเรียบร้อยแล้ว',
+        user_id: dto.user_id,
+        org_id: dto.org_id,
+      };
+    } catch (err: any) {
+      await this.db.rollback(client);
+      this.logger.error(`Add org access error: ${err.message}`);
+      throw err;
+    }
+  }
+
+  // 8.2 ดึงรายการองค์กรที่ผู้ใช้มีสิทธิ์เข้าถึงเพิ่มเติม (is_primary = 0)
+  async getUserOrgAccess(userId: number) {
+    try {
+      const userExists = await this.db.select('users', { user_id: userId });
+      if (userExists.length === 0) {
+        throw new NotFoundException('ไม่พบข้อมูลผู้ใช้งานที่ระบุ');
+      }
+
+      const accessList = await this.db.query(
+        `SELECT
+          uo.org_id,
+          uo.is_primary,
+          o.org_name,
+          o.parent_id,
+          o.level,
+          parent_org.org_name AS branch_name,
+          parent_org.org_id AS branch_id
+        FROM user_organizations uo
+        JOIN organizations o ON uo.org_id = o.org_id AND o.is_active = 1
+        LEFT JOIN organizations parent_org ON o.parent_id = parent_org.org_id AND parent_org.is_active = 1
+        WHERE uo.user_id = $1 AND uo.is_primary = 0
+        ORDER BY o.org_id ASC`,
+        [userId],
+      );
+
+      return accessList;
+    } catch (err: any) {
+      if (err instanceof NotFoundException) throw err;
+      this.logger.error(`Get user org access error: ${err.message}`);
+      throw new BadRequestException(
+        'ไม่สามารถดึงข้อมูลสิทธิ์เข้าถึงหน่วยงานเพิ่มเติมได้',
+      );
+    }
+  }
+
+  // 8.3 ถอนสิทธิ์เข้าถึงองค์กรเพิ่มเติม (is_primary = 0)
+  async removeOrgAccess(dto: OrgAccessDto, context?: AuditContext) {
+    const client = await this.db.startTransaction();
+
+    try {
+      const existing = await this.db.queryTx(
+        client,
+        `SELECT uo.*, o.org_name
+         FROM user_organizations uo
+         LEFT JOIN organizations o ON uo.org_id = o.org_id
+         WHERE uo.user_id = $1 AND uo.org_id = $2 AND uo.is_primary = 0`,
+        [dto.user_id, dto.org_id],
+      );
+
+      if (existing.length === 0) {
+        throw new NotFoundException(
+          'ไม่พบข้อมูลสิทธิ์เข้าถึงเพิ่มเติมที่ต้องการถอน',
+        );
+      }
+
+      await this.db.queryTx(
+        client,
+        'DELETE FROM user_organizations WHERE user_id = $1 AND org_id = $2 AND is_primary = 0',
+        [dto.user_id, dto.org_id],
+      );
+
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'DELETE',
+          moduleName: 'user_org_access',
+          recordId: dto.user_id.toString(),
+          oldData: existing[0],
+          newData: null,
+          remark: dto.remark || 'ถอนสิทธิ์เข้าถึงหน่วยงาน',
+        },
+        context,
+      );
+
+      await this.db.commit(client);
+      return { message: 'ถอนสิทธิ์เข้าถึงหน่วยงานเรียบร้อยแล้ว' };
+    } catch (err: any) {
+      await this.db.rollback(client);
+      this.logger.error(`Remove org access error: ${err.message}`);
+      if (err instanceof NotFoundException) throw err;
+      throw new BadRequestException(
+        'ไม่สามารถดำเนินการถอนสิทธิ์เข้าถึงหน่วยงานได้',
       );
     }
   }

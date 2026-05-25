@@ -647,6 +647,105 @@ export class OrganizationsService {
     }
   }
 
+  // ==========================================
+  // 📂 9. Organization Permissions (ฟังก์ชันการใช้งานขององค์กร)
+  // ==========================================
+
+  // 9.1 ดึงฟังก์ชันการใช้งานทั้งหมดขององค์กร
+  async getOrganizationPermissions(orgId: number) {
+    // ตรวจสอบว่าองค์กรมีอยู่จริง
+    await this.findOneOrg(orgId);
+
+    const records = await this.db.query(
+      'SELECT permission_id FROM organization_permissions WHERE org_id = $1',
+      [orgId]
+    );
+
+    const permission_ids = records.map((r: any) => r.permission_id);
+
+    return {
+      org_id: orgId,
+      permission_ids,
+    };
+  }
+
+  // 9.2 บันทึก/อัปเดตฟังก์ชันการใช้งานขององค์กร (แทนที่ของเดิมทั้งหมด)
+  async assignOrganizationPermissions(
+    orgId: number,
+    permissionIds: number[],
+    context?: AuditContext,
+  ) {
+    // ตรวจสอบว่าองค์กรมีอยู่จริง
+    const org = await this.findOneOrg(orgId);
+
+    const client = await this.db.startTransaction();
+
+    try {
+      // 1. ดึงข้อมูลเดิมสำหรับ Audit Log
+      const oldRecords = await this.db.queryTx(
+        client,
+        'SELECT permission_id FROM organization_permissions WHERE org_id = $1',
+        [orgId]
+      );
+      const oldPermissionIds = oldRecords.map((r: any) => r.permission_id);
+
+      // 2. ลบฟังก์ชันเดิมทั้งหมดขององค์กรนี้
+      await this.db.queryTx(
+        client,
+        'DELETE FROM organization_permissions WHERE org_id = $1',
+        [orgId],
+      );
+
+      // 3. เพิ่มฟังก์ชันใหม่เข้าไป (Bulk Insert)
+      if (permissionIds && permissionIds.length > 0) {
+        // กรองเอาเฉพาะ ID ที่ไม่ซ้ำกันเพื่อป้องกัน error ตอน insert
+        const uniqueIds = Array.from(new Set(permissionIds));
+        
+        const values = [];
+        const params = [];
+        let paramIndex = 1;
+
+        for (const pId of uniqueIds) {
+          values.push(`($${paramIndex}, $${paramIndex + 1})`);
+          params.push(orgId, pId);
+          paramIndex += 2;
+        }
+
+        const query = `
+          INSERT INTO organization_permissions (org_id, permission_id)
+          VALUES ${values.join(', ')}
+        `;
+        await this.db.queryTx(client, query, params);
+      }
+
+      // 4. บันทึก Audit Log
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'UPDATE',
+          moduleName: 'organization_permissions',
+          recordId: orgId.toString(),
+          oldData: { org_id: orgId, permission_ids: oldPermissionIds },
+          newData: { org_id: orgId, permission_ids: permissionIds || [] },
+          remark: `อัปเดตฟังก์ชันการใช้งานให้หน่วยงาน "${org.org_name}"`,
+        },
+        context,
+      );
+
+      await this.db.commit(client);
+
+      return {
+        message: 'อัปเดตฟังก์ชันการใช้งานของหน่วยงานเรียบร้อยแล้ว',
+        org_id: orgId,
+        permission_ids: permissionIds || [],
+      };
+    } catch (err: any) {
+      await this.db.rollback(client);
+      this.logger.error(`Assign org permissions error: ${err.message}`);
+      throw new BadRequestException('ไม่สามารถอัปเดตฟังก์ชันการใช้งานของหน่วยงานได้');
+    }
+  }
+
   // 1.2 แก้ไขสาขาพร้อมหน่วยงานย่อยรวดเดียว (Bulk Upsert & Delete)
   async updateBranchWithUnits(
     dto: UpdateBranchWithUnitsDto,

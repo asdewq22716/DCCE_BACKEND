@@ -110,3 +110,27 @@ CREATE INDEX idx_user_organizations_is_primary ON user_organizations(is_primary)
 -- อัปเดตข้อมูลเดิมที่มีอยู่ให้เป็นสังกัดหลักทั้งหมด (กรณีมีข้อมูลอยู่แล้ว):
 -- UPDATE user_organizations SET is_primary = 1 WHERE is_primary = 0;
 
+-- ==========================================
+-- 10. Organization Permissions (กำหนดสิทธิ์ให้หน่วยงาน)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS organization_permissions (
+    org_id INTEGER NOT NULL,
+    permission_id INTEGER NOT NULL,
+    PRIMARY KEY (org_id, permission_id)
+);
+
+COMMENT ON TABLE organization_permissions IS 'ตารางจับคู่หน่วยงาน/สาขากับสิทธิ์การใช้งาน';
+COMMENT ON COLUMN organization_permissions.org_id IS 'ID ของหน่วยงานหรือสาขา';
+COMMENT ON COLUMN organization_permissions.permission_id IS 'ID ของสิทธิ์ย่อย';
+-- ==========================================
+-- 10. Organization Permissions (กำหนดสิทธิ์ให้หน่วยงาน)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS organization_permissions (
+    org_id INTEGER NOT NULL,
+    permission_id INTEGER NOT NULL,
+    PRIMARY KEY (org_id, permission_id)
+);
+
+COMMENT ON TABLE organization_permissions IS 'ตารางจับคู่หน่วยงาน/สาขากับสิทธิ์การใช้งาน (แทนที่ role_permissions สำหรับระบบนี้)';
+COMMENT ON COLUMN organization_permissions.org_id IS 'ID ของหน่วยงานหรือสาขา';
+COMMENT ON COLUMN organization_permissions.permission_id IS 'ID ของสิทธิ์ย่อย';

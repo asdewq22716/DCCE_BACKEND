@@ -14,4 +14,13 @@ export class CreatePermissionGroupDto {
   @IsNumber()
   @IsOptional()
   sort_order?: number;
+
+  @ApiProperty({
+    description: 'ID ของกลุ่มแม่ (ถ้ามี)',
+    example: null,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  parent_id?: number;
 }

@@ -20,6 +20,7 @@ import { UpdateBranchWithUnitsDto } from './dto/update-branch-with-units.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDetailDto } from './dto/update-unit-detail.dto';
 import { BranchQueryDto } from './dto/organizations-queries.dto';
+import { AssignOrgPermissionsDto } from './dto/assign-org-permissions.dto';
 import { OrganizationType } from './types/organization.type';
 
 @Controller('organizations')
@@ -30,7 +31,7 @@ export class OrganizationsController {
   // 📂 Branch & Unit CRUD
   // ==========================================
 
-  @ApiTags('Organizations')
+  @ApiTags('Organizations - Branches')
   @Post('branches-with-units')
   @ApiOperation({
     summary:
@@ -48,7 +49,7 @@ export class OrganizationsController {
     return this.organizationsService.createBranchWithUnits(dto, context);
   }
 
-  @ApiTags('Organizations')
+  @ApiTags('Organizations - Branches')
   @Put('branches-with-units')
   @ApiOperation({
     summary:
@@ -66,7 +67,7 @@ export class OrganizationsController {
     return this.organizationsService.updateBranchWithUnits(dto, context);
   }
 
-  @ApiTags('Organizations')
+  @ApiTags('Organizations - Branches')
   @Get('branches')
   @ApiOperation({
     summary:
@@ -79,7 +80,7 @@ export class OrganizationsController {
     return this.organizationsService.findAllBranches(branchId);
   }
 
-  @ApiTags('Organizations')
+  @ApiTags('Organizations - Branches')
   @Delete('branches/:id')
   @ApiOperation({
     summary: 'ลบสาขาหลักพร้อมแผนกย่อยทั้งหมดภายใต้สาขานั้น (Soft Delete)',
@@ -97,7 +98,7 @@ export class OrganizationsController {
   // 📂 Unit CRUD
   // ==========================================
 
-  @ApiTags('Organizations')
+  @ApiTags('Organizations - Units')
   @Post('units')
   @ApiOperation({ summary: 'สร้างหน่วยงานย่อยเดี่ยว' })
   createUnit(
@@ -112,7 +113,7 @@ export class OrganizationsController {
     return this.organizationsService.createUnit(dto, context);
   }
 
-  @ApiTags('Organizations')
+  @ApiTags('Organizations - Units')
   @Put('units/:id')
   @ApiOperation({ summary: 'แก้ไขข้อมูลหน่วยงานย่อยเดี่ยว' })
   updateUnit(
@@ -128,7 +129,7 @@ export class OrganizationsController {
     return this.organizationsService.updateUnit(id, dto, context);
   }
 
-  @ApiTags('Organizations')
+  @ApiTags('Organizations - Units')
   @Get('units')
   @ApiOperation({
     summary:
@@ -234,5 +235,40 @@ export class OrganizationsController {
       userAgent: req.headers['user-agent'] || null,
     };
     return this.organizationsService.removeOrgAccess(dto, context);
+  }
+
+  // ==========================================
+  // 📂 Organization Permissions (ฟังก์ชันการใช้งานขององค์กร)
+  // ==========================================
+
+  @ApiTags('Organizations - Permissions')
+  @Get(':id/permissions')
+  @ApiOperation({
+    summary: 'ดึงรายการฟังก์ชันการใช้งานที่องค์กร/สาขานี้ได้รับสิทธิ์',
+  })
+  getOrganizationPermissions(@Param('id', ParseIntPipe) id: number) {
+    return this.organizationsService.getOrganizationPermissions(id);
+  }
+
+  @ApiTags('Organizations - Permissions')
+  @Post(':id/permissions')
+  @ApiOperation({
+    summary: 'บันทึกการตั้งค่าฟังก์ชันการใช้งานให้กับองค์กร (แทนที่ของเดิมทั้งหมด)',
+  })
+  assignOrganizationPermissions(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AssignOrgPermissionsDto,
+  ) {
+    const context = {
+      userId: req.user?.userId || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+    return this.organizationsService.assignOrganizationPermissions(
+      id,
+      dto.permission_ids || [],
+      context,
+    );
   }
 }

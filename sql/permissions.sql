@@ -82,6 +82,7 @@ COMMENT ON COLUMN user_roles.role_id IS 'ID ของบทบาท';
 CREATE TABLE permission_groups (
     group_id SERIAL PRIMARY KEY,
     group_name VARCHAR(100) NOT NULL UNIQUE,
+    parent_id INTEGER DEFAULT NULL,
     sort_order INTEGER DEFAULT 0,
     is_active INT2 DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -90,6 +91,7 @@ CREATE TABLE permission_groups (
 
 COMMENT ON TABLE permission_groups IS 'ตารางกลุ่มของสิทธิ์การใช้งาน';
 COMMENT ON COLUMN permission_groups.group_name IS 'ชื่อกลุ่มสิทธิ์ (เช่น ระบบสมาชิก, รายงาน)';
+COMMENT ON COLUMN permission_groups.parent_id IS 'ID ของกลุ่มแม่ (ถ้ามี) ไว้ทำโครงสร้างแบบ Tree';
 COMMENT ON COLUMN permission_groups.sort_order IS 'ลำดับการแสดงผลของกลุ่มสิทธิ์';
 COMMENT ON COLUMN permission_groups.is_active IS 'สถานะการใช้งาน (1=ใช้งาน, 0=ปิดใช้งาน)';
 

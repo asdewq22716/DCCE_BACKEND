@@ -19,9 +19,9 @@ import { RolesModule } from './roles/roles.module';
     PermissionsModule,
     OrganizationsModule,
     AuditLogsModule,
-    RolesModule,
+    /* RolesModule, */
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

@@ -267,7 +267,7 @@ export class OrganizationsController {
     };
     return this.organizationsService.assignOrganizationPermissions(
       id,
-      dto.permission_ids || [],
+      dto,
       context,
     );
   }

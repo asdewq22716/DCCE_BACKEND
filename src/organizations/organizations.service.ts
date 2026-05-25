@@ -17,6 +17,7 @@ import { CreateBranchWithUnitsDto } from './dto/create-branch-with-units.dto';
 import { UpdateBranchWithUnitsDto } from './dto/update-branch-with-units.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDetailDto } from './dto/update-unit-detail.dto';
+import { AssignOrgPermissionsDto } from './dto/assign-org-permissions.dto';
 import { OrganizationType } from './types/organization.type';
 
 @Injectable()
@@ -672,7 +673,7 @@ export class OrganizationsService {
   // 9.2 บันทึก/อัปเดตฟังก์ชันการใช้งานขององค์กร (แทนที่ของเดิมทั้งหมด)
   async assignOrganizationPermissions(
     orgId: number,
-    permissionIds: number[],
+    dto: AssignOrgPermissionsDto,
     context?: AuditContext,
   ) {
     // ตรวจสอบว่าองค์กรมีอยู่จริง
@@ -681,6 +682,19 @@ export class OrganizationsService {
     const client = await this.db.startTransaction();
 
     try {
+      // 0. อัปเดตข้อมูลการตั้งค่าสิทธิ์ที่ระดับหน่วยงาน (is_active, remark)
+      const updateData: any = {};
+      if (dto.is_active !== undefined) {
+        updateData.permission_is_active = dto.is_active;
+      }
+      if (dto.remark !== undefined) {
+        updateData.permission_remark = dto.remark;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await this.db.update('organizations', updateData, { org_id: orgId }, client);
+      }
+
       // 1. ดึงข้อมูลเดิมสำหรับ Audit Log
       const oldRecords = await this.db.queryTx(
         client,
@@ -697,9 +711,9 @@ export class OrganizationsService {
       );
 
       // 3. เพิ่มฟังก์ชันใหม่เข้าไป (Bulk Insert)
-      if (permissionIds && permissionIds.length > 0) {
+      if (dto.permission_ids && dto.permission_ids.length > 0) {
         // กรองเอาเฉพาะ ID ที่ไม่ซ้ำกันเพื่อป้องกัน error ตอน insert
-        const uniqueIds = Array.from(new Set(permissionIds));
+        const uniqueIds = Array.from(new Set(dto.permission_ids));
         
         const values = [];
         const params = [];
@@ -726,7 +740,7 @@ export class OrganizationsService {
           moduleName: 'organization_permissions',
           recordId: orgId.toString(),
           oldData: { org_id: orgId, permission_ids: oldPermissionIds },
-          newData: { org_id: orgId, permission_ids: permissionIds || [] },
+          newData: { org_id: orgId, permission_ids: dto.permission_ids || [], is_active: dto.is_active, remark: dto.remark },
           remark: `อัปเดตฟังก์ชันการใช้งานให้หน่วยงาน "${org.org_name}"`,
         },
         context,
@@ -737,7 +751,9 @@ export class OrganizationsService {
       return {
         message: 'อัปเดตฟังก์ชันการใช้งานของหน่วยงานเรียบร้อยแล้ว',
         org_id: orgId,
-        permission_ids: permissionIds || [],
+        permission_ids: dto.permission_ids || [],
+        is_active: dto.is_active,
+        remark: dto.remark
       };
     } catch (err: any) {
       await this.db.rollback(client);

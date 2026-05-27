@@ -44,6 +44,21 @@ export class UsersService {
     }
   }
 
+  async getUserOrganizationsByUserId(user_id: number): Promise<any[]> {
+    try {
+      return await this.db.query(
+        `SELECT o.org_id, o.org_name, uo.is_primary 
+         FROM user_organizations uo 
+         JOIN organizations o ON uo.org_id = o.org_id 
+         WHERE uo.user_id = $1`,
+        [user_id]
+      );
+    } catch (err: any) {
+      this.logger.error(`Get user orgs by user id error: ${err.message}`);
+      return [];
+    }
+  }
+
   async getUserById(userId: number) {
     const users = await this.db.select<any>('users', {
       user_id: userId,
@@ -51,7 +66,8 @@ export class UsersService {
     if (users.length === 0) {
       throw new Error('User not found');
     }
-    const roles = await this.getUserRoleByUserId(userId);
+    const roles = await this.getUserRoleByUserId(userId).catch(() => []);
+    const organizations = await this.getUserOrganizationsByUserId(userId);
 
     return {
       user: {
@@ -79,6 +95,7 @@ export class UsersService {
         last_login: users[0].last_login,
       },
       roles: roles,
+      organizations: organizations,
     };
   }
 

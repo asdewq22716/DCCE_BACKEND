@@ -4,18 +4,13 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FncDB } from 'src/common/services/fnc-db.service';
-import { AuditLogService, AuditContext } from 'src/common/services/audit-log.service';
 import { SyncPermissionsDto, SyncGroupDto } from './dto/sync-permissions.dto';
-import { BulkUpdateUserOrgPermissionsDto } from './dto/user-org-permissions.dto';
 
 @Injectable()
 export class PermissionsService {
   private readonly logger = new Logger(PermissionsService.name);
 
-  constructor(
-    private readonly db: FncDB,
-    private readonly auditLog: AuditLogService,
-  ) {}
+  constructor(private readonly db: FncDB) { }
 
   async getPermissionsTree() {
     // ดึงกลุ่มทั้งหมดที่ Active
@@ -191,24 +186,15 @@ export class PermissionsService {
     };
   }
 
-  async saveAllUserOrgPermissions(userId: number, dto: BulkUpdateUserOrgPermissionsDto, context?: AuditContext) {
+  async saveAllUserOrgPermissions(userId: number, orgPermissions: { org_id: number; permissionIds: number[] }[]) {
     const client = await this.db.startTransaction();
     try {
-      // 0. อัปเดตสถานะการใช้งานและหมายเหตุในตาราง users ถ้ามีการส่งมา
-      if (dto.permission_status !== undefined || dto.permission_remark !== undefined) {
-        const updateData: any = {};
-        if (dto.permission_status !== undefined) updateData.permission_status = dto.permission_status;
-        if (dto.permission_remark !== undefined) updateData.permission_remark = dto.permission_remark;
-        
-        await this.db.update('users', updateData, { user_id: userId }, client);
-      }
-
       // 1. ดึงสิทธิ์ทั้งหมดที่มีในระบบ เพื่อเอามาเซ็ตค่า is_deny
       const allPermissionsResult = await this.db.query('SELECT permission_id FROM permissions WHERE is_active = 1');
       const allPermissions = allPermissionsResult.map((p: any) => p.permission_id);
 
       // 2. Loop วนทีละหน่วยงานที่ส่งมาเพื่อบันทึก
-      for (const item of dto.orgPermissions) {
+      for (const item of orgPermissions) {
         const orgId = item.org_id;
         const permissionIds = item.permissionIds || [];
 
@@ -231,23 +217,6 @@ export class PermissionsService {
         }
       }
 
-      await this.auditLog.log(
-        client,
-        {
-          actionType: 'UPDATE',
-          moduleName: 'user_permissions',
-          recordId: userId.toString(),
-          oldData: null,
-          newData: {
-            permission_status: dto.permission_status,
-            permission_remark: dto.permission_remark,
-            orgPermissions: dto.orgPermissions,
-          },
-          remark: `กำหนดสิทธิ์การใช้งานรายบุคคล (Override) จำนวน ${dto.orgPermissions.length} หน่วยงาน`,
-        },
-        context,
-      );
-
       await this.db.commit(client);
       return { message: 'บันทึกสิทธิ์ทุกหน่วยงานสำเร็จ' };
     } catch (err: any) {
@@ -268,7 +237,17 @@ export class PermissionsService {
     }
     const userProfile = users[0];
 
-    // 2. ดึง Global Permissions จาก Roles ที่ Active
+    // ถ้า User ถูกระงับสิทธิ์การใช้งาน (แบน) ให้ส่งคืนค่าว่างทั้งหมดเพื่อความปลอดภัยสูงสุด
+    if (userProfile.permission_status !== 1) {
+      return {
+        permission_status: userProfile.permission_status,
+        permission_remark: userProfile.permission_remark,
+        global_permissions: [],
+        organizations: [],
+      };
+    }
+
+    // 2. ดึง Global Permissions จาก Roles ที่ Active (สิทธิ์พื้นฐานตั้งต้น)
     const globalPermsResult = await this.db.query(
       `SELECT DISTINCT p.p_key 
        FROM user_roles ur 
@@ -307,7 +286,7 @@ export class PermissionsService {
       );
       const basePerms = new Set(basePermsResult.map((r: any) => r.p_key));
 
-      // 3.2 สิทธิ์พิเศษของรายบุคคล (Overrides)
+      // 3.2 สิทธิ์พิเศษของรายบุคคล (Overrides) 
       const overrideResult = await this.db.query(
         `SELECT p.p_key, up.is_deny 
          FROM user_permissions up 
@@ -325,7 +304,8 @@ export class PermissionsService {
         }
       }
 
-      // นำ Global Permissions มาบวกอัดเข้าไปใน Org นี้ด้วย (หน้าบ้านจะได้เช็คแค่ที่เดียว)
+      // 3.3 นำ Global Permissions (จาก Role) มาทับเป็นขั้นสุดท้าย! 
+      // (สิทธิ์แอดมินหรือ Role หลักจะไม่มีวันถูกลบโดยการ Override ระดับหน่วยงาน)
       for (const gp of globalPermissions) {
         basePerms.add(gp);
       }

@@ -82,11 +82,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user profile and effective permissions' })
   async getProfile(@Req() req: any) {
     const userId = req.user.userId;
-    const { user } = await this.usersService.getUserById(userId);
+    const { user, roles, organizations } = await this.usersService.getUserById(userId);
     const permissions = await this.permissionsService.getEffectivePermissions(userId);
 
     return {
       user: user,
+      roles: roles,
+      organizations: organizations,
       permissions: permissions
     };
   }

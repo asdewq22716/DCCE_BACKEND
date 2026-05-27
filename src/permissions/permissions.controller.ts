@@ -51,11 +51,9 @@ export class PermissionsController {
   @ApiOperation({ summary: 'บันทึกสิทธิ์แบบกำหนดเอง (Override) หลายหน่วยงานพร้อมกันทีเดียว' })
   @ApiParam({ name: 'userId', type: 'number' })
   saveAllUserOrgPermissions(
-    @Req() req: any,
     @Param('userId', ParseIntPipe) userId: number,
-    @Body() dto: BulkUpdateUserOrgPermissionsDto,
+    @Body() orgPermissions: { org_id: number; permissionIds: number[] }[],
   ) {
-    const context = FncCustom.getAuditContext(req);
-    return this.permissionsService.saveAllUserOrgPermissions(userId, dto, context);
+    return this.permissionsService.saveAllUserOrgPermissions(userId, orgPermissions);
   }
 }

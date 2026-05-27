@@ -4,18 +4,13 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FncDB } from 'src/common/services/fnc-db.service';
-import { AuditLogService, AuditContext } from 'src/common/services/audit-log.service';
 import { SyncPermissionsDto, SyncGroupDto } from './dto/sync-permissions.dto';
-import { BulkUpdateUserOrgPermissionsDto } from './dto/user-org-permissions.dto';
 
 @Injectable()
 export class PermissionsService {
   private readonly logger = new Logger(PermissionsService.name);
 
-  constructor(
-    private readonly db: FncDB,
-    private readonly auditLog: AuditLogService,
-  ) {}
+  constructor(private readonly db: FncDB) { }
 
   async getPermissionsTree() {
     // ดึงกลุ่มทั้งหมดที่ Active
@@ -191,24 +186,15 @@ export class PermissionsService {
     };
   }
 
-  async saveAllUserOrgPermissions(userId: number, dto: BulkUpdateUserOrgPermissionsDto, context?: AuditContext) {
+  async saveAllUserOrgPermissions(userId: number, orgPermissions: { org_id: number; permissionIds: number[] }[]) {
     const client = await this.db.startTransaction();
     try {
-      // 0. อัปเดตสถานะการใช้งานและหมายเหตุในตาราง users ถ้ามีการส่งมา
-      if (dto.permission_status !== undefined || dto.permission_remark !== undefined) {
-        const updateData: any = {};
-        if (dto.permission_status !== undefined) updateData.permission_status = dto.permission_status;
-        if (dto.permission_remark !== undefined) updateData.permission_remark = dto.permission_remark;
-        
-        await this.db.update('users', updateData, { user_id: userId }, client);
-      }
-
       // 1. ดึงสิทธิ์ทั้งหมดที่มีในระบบ เพื่อเอามาเซ็ตค่า is_deny
       const allPermissionsResult = await this.db.query('SELECT permission_id FROM permissions WHERE is_active = 1');
       const allPermissions = allPermissionsResult.map((p: any) => p.permission_id);
 
       // 2. Loop วนทีละหน่วยงานที่ส่งมาเพื่อบันทึก
-      for (const item of dto.orgPermissions) {
+      for (const item of orgPermissions) {
         const orgId = item.org_id;
         const permissionIds = item.permissionIds || [];
 
@@ -231,23 +217,6 @@ export class PermissionsService {
         }
       }
 
-      await this.auditLog.log(
-        client,
-        {
-          actionType: 'UPDATE',
-          moduleName: 'user_permissions',
-          recordId: userId.toString(),
-          oldData: null,
-          newData: {
-            permission_status: dto.permission_status,
-            permission_remark: dto.permission_remark,
-            orgPermissions: dto.orgPermissions,
-          },
-          remark: `กำหนดสิทธิ์การใช้งานรายบุคคล (Override) จำนวน ${dto.orgPermissions.length} หน่วยงาน`,
-        },
-        context,
-      );
-
       await this.db.commit(client);
       return { message: 'บันทึกสิทธิ์ทุกหน่วยงานสำเร็จ' };
     } catch (err: any) {
@@ -255,5 +224,103 @@ export class PermissionsService {
       this.logger.error(`Error saving user org permissions: ${err.message}`);
       throw new BadRequestException('ไม่สามารถบันทึกสิทธิ์ได้ กรุณาลองใหม่อีกครั้ง');
     }
+  }
+
+  async getEffectivePermissions(userId: number) {
+    // 1. ตรวจสอบ Profile และสิทธิ์รวมของ User
+    const users = await this.db.query(
+      'SELECT permission_status, permission_remark FROM users WHERE user_id = $1',
+      [userId]
+    );
+    if (users.length === 0) {
+      throw new BadRequestException('ไม่พบผู้ใช้งานในระบบ');
+    }
+    const userProfile = users[0];
+
+    // ถ้า User ถูกระงับสิทธิ์การใช้งาน (แบน) ให้ส่งคืนค่าว่างทั้งหมดเพื่อความปลอดภัยสูงสุด
+    if (userProfile.permission_status !== 1) {
+      return {
+        permission_status: userProfile.permission_status,
+        permission_remark: userProfile.permission_remark,
+        global_permissions: [],
+        organizations: [],
+      };
+    }
+
+    // 2. ดึง Global Permissions จาก Roles ที่ Active (สิทธิ์พื้นฐานตั้งต้น)
+    const globalPermsResult = await this.db.query(
+      `SELECT DISTINCT p.p_key 
+       FROM user_roles ur 
+       JOIN role_permissions rp ON ur.role_id = rp.role_id 
+       JOIN permissions p ON rp.permission_id = p.permission_id 
+       JOIN roles r ON r.role_id = ur.role_id 
+       WHERE ur.user_id = $1 
+         AND p.is_active = 1 
+         AND r.is_active = 1 
+         AND r.role_status = 1`,
+      [userId]
+    );
+    const globalPermissions = globalPermsResult.map((r: any) => r.p_key);
+
+    // 3. ดึง Organization Permissions (แยกตามหน่วยงานที่สังกัด)
+    const orgsResult = await this.db.query(
+      `SELECT o.org_id, o.org_name 
+       FROM user_organizations uo 
+       JOIN organizations o ON uo.org_id = o.org_id 
+       WHERE uo.user_id = $1 
+         AND o.is_active = 1 
+         AND o.permission_is_active = 1`,
+      [userId]
+    );
+
+    const organizations = [];
+
+    for (const org of orgsResult) {
+      // 3.1 สิทธิ์พื้นฐานของหน่วยงาน (Base Permissions)
+      const basePermsResult = await this.db.query(
+        `SELECT p.p_key 
+         FROM organization_permissions op 
+         JOIN permissions p ON op.permission_id = p.permission_id 
+         WHERE op.org_id = $1 AND p.is_active = 1`,
+        [org.org_id]
+      );
+      const basePerms = new Set(basePermsResult.map((r: any) => r.p_key));
+
+      // 3.2 สิทธิ์พิเศษของรายบุคคล (Overrides)
+      const overrideResult = await this.db.query(
+        `SELECT p.p_key, up.is_deny 
+         FROM user_permissions up 
+         JOIN permissions p ON up.permission_id = p.permission_id 
+         WHERE up.user_id = $1 AND up.org_id = $2 AND p.is_active = 1`,
+        [userId, org.org_id]
+      );
+
+      // คำนวณ (Base + อนุญาตเพิ่ม) - ถูกระงับ
+      for (const override of overrideResult) {
+        if (override.is_deny === 0) {
+          basePerms.add(override.p_key);
+        } else if (override.is_deny === 1) {
+          basePerms.delete(override.p_key);
+        }
+      }
+
+      // 3.3 นำ Global Permissions (จาก Role) มาทับเป็นขั้นสุดท้าย! 
+      // (สิทธิ์แอดมินหรือ Role หลักจะไม่มีวันถูกลบโดยการ Override ระดับหน่วยงาน)
+      for (const gp of globalPermissions) {
+        basePerms.add(gp);
+      }
+      organizations.push({
+        org_id: org.org_id,
+        org_name: org.org_name,
+        permissions: Array.from(basePerms),
+      });
+    }
+
+    return {
+      permission_status: userProfile.permission_status,
+      permission_remark: userProfile.permission_remark,
+      global_permissions: globalPermissions,
+      organizations: organizations,
+    };
   }
 }

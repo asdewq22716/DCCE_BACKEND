@@ -18,6 +18,7 @@ import {
   TypeRoles,
 } from './interfaces/sso-response.interface';
 import { UsersService } from 'src/users/users.service';
+import { PermissionsService } from 'src/permissions/permissions.service';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -25,6 +26,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly permissionsService: PermissionsService,
   ) {}
   @Post('sso/login')
   @ApiOperation({ summary: 'SSO Login using credentials' })
@@ -75,17 +77,19 @@ export class AuthController {
     return { message: 'Logged out successfully' };
   }
 
-  // --- ตัวอย่างการนำ Guard ไปใช้งาน ---
-  @UseGuards(JwtAuthGuard) // 👈 แปะป้ายบอกว่าต้องมี Cookie มาก่อนถึงจะเข้าเส้นนี้ได้
+  @UseGuards(JwtAuthGuard)
   @Get('me')
-  @ApiOperation({ summary: 'Get current user profile (Protected API)' })
-  getProfile(@Req() req: any) {
-    // ถ้ายาม (Guard) ตรวจผ่าน จะเอาข้อมูลใน Token มาใส่ไว้ใน req.user ให้เราใช้งานต่อ
-    console.log('=== ข้อมูลใน req.user ===');
-    console.log(req.user);
+  @ApiOperation({ summary: 'Get current user profile and effective permissions' })
+  async getProfile(@Req() req: any) {
+    const userId = req.user.userId;
+    const { user, roles, organizations } = await this.usersService.getUserById(userId);
+    const permissions = await this.permissionsService.getEffectivePermissions(userId);
+
     return {
-      message: 'ยินดีด้วย คุณผ่านด่านเข้ามาได้!',
-      user_info_from_token: req.user, // เช่น { userId: '123', username: 'john' }
+      user: user,
+      roles: roles,
+      organizations: organizations,
+      permissions: permissions
     };
   }
 }

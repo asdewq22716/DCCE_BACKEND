@@ -23,8 +23,9 @@ export class PermissionsController {
     type: SyncPermissionsDto,
     examples: SyncPermissionsExamples
   })
-  syncPermissions(@Body() dto: SyncPermissionsDto) {
-    return this.permissionsService.syncPermissions(dto);
+  syncPermissions(@Req() req: any, @Body() dto: SyncPermissionsDto) {
+    const context = FncCustom.getAuditContext(req);
+    return this.permissionsService.syncPermissions(dto, context);
   }
 
   @Get('users/:userId/orgs')

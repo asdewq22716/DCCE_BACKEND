@@ -34,44 +34,49 @@ export class RolesController {
     return await this.rolesService.findAll();
   }
 
-  @Get(':id')
+  @Get(':roleId')
   @ApiOperation({ summary: 'Get role by id' })
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    return await this.rolesService.findOne(id);
+  @ApiParam({ name: 'roleId', type: 'number', description: 'ID ของ Role (บทบาท)' })
+  async findOne(@Param('roleId', ParseIntPipe) roleId: number) {
+    return await this.rolesService.findOne(roleId);
   }
 
-  @Put(':id')
+  @Put(':roleId')
   @ApiOperation({ summary: 'Update role details' })
+  @ApiParam({ name: 'roleId', type: 'number', description: 'ID ของ Role (บทบาท)' })
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('roleId', ParseIntPipe) roleId: number,
     @Body() dto: UpdateRoleDto,
     @Req() req: any,
   ) {
     const context = FncCustom.getAuditContext(req);
-    return await this.rolesService.update(id, dto, context);
+    return await this.rolesService.update(roleId, dto, context);
   }
 
-  @Delete(':id')
+  @Delete(':roleId')
   @ApiOperation({ summary: 'Delete role' })
-  async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+  @ApiParam({ name: 'roleId', type: 'number', description: 'ID ของ Role (บทบาท)' })
+  async delete(@Param('roleId', ParseIntPipe) roleId: number, @Req() req: any) {
     const context = FncCustom.getAuditContext(req);
-    return await this.rolesService.delete(id, context);
+    return await this.rolesService.delete(roleId, context);
   }
 
-  @Get(':id/permissions')
+  @Get(':roleId/permissions')
   @ApiOperation({ summary: 'Get permissions of a role' })
-  async getPermissions(@Param('id', ParseIntPipe) id: number) {
-    return await this.rolesService.getPermissions(id);
+  @ApiParam({ name: 'roleId', type: 'number', description: 'ID ของ Role (บทบาท)' })
+  async getPermissions(@Param('roleId', ParseIntPipe) roleId: number) {
+    return await this.rolesService.getPermissions(roleId);
   }
 
-  @Post(':id/permissions')
+  @Post(':roleId/permissions')
   @ApiOperation({ summary: 'Assign permissions to a role' })
+  @ApiParam({ name: 'roleId', type: 'number', description: 'ID ของ Role (บทบาท)' })
   async assignPermissions(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('roleId', ParseIntPipe) roleId: number,
     @Body() dto: AssignPermissionsDto,
     @Req() req: any,
   ) {
     const context = FncCustom.getAuditContext(req);
-    return await this.rolesService.assignPermissions(id, dto, context);
+    return await this.rolesService.assignPermissions(roleId, dto, context);
   }
 }

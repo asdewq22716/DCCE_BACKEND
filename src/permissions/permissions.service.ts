@@ -286,7 +286,7 @@ export class PermissionsService {
       );
       const basePerms = new Set(basePermsResult.map((r: any) => r.p_key));
 
-      // 3.2 สิทธิ์พิเศษของรายบุคคล (Overrides) 
+      // 3.2 สิทธิ์พิเศษของรายบุคคล (Overrides)
       const overrideResult = await this.db.query(
         `SELECT p.p_key, up.is_deny 
          FROM user_permissions up 
@@ -309,7 +309,6 @@ export class PermissionsService {
       for (const gp of globalPermissions) {
         basePerms.add(gp);
       }
-
       organizations.push({
         org_id: org.org_id,
         org_name: org.org_name,

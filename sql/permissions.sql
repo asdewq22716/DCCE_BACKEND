@@ -29,6 +29,8 @@ CREATE TABLE users (
     -- Local Data
     full_name VARCHAR(255),
     is_active SMALLINT DEFAULT 1,
+    permission_status SMALLINT DEFAULT 1,
+    permission_remark TEXT,
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -52,6 +54,8 @@ COMMENT ON COLUMN users.sso_division_name IS 'ชื่อกอง/ส่วน
 COMMENT ON COLUMN users.sso_sub_division_name IS 'ชื่อฝ่าย/กลุ่มงาน';
 COMMENT ON COLUMN users.full_name IS 'ชื่อ-นามสกุลเต็ม สำหรับแสดงผล';
 COMMENT ON COLUMN users.is_active IS 'สถานะการเปิดใช้งานในระบบนี้ (1 = ปกติ, 0 = ระงับ)';
+COMMENT ON COLUMN users.permission_status IS 'สถานะการใช้งาน (1 = เปิด, 0 = ปิด, 2 = ถูกบล็อก)';
+COMMENT ON COLUMN users.permission_remark IS 'หมายเหตุการบล็อกหรือปิดการใช้งาน';
 COMMENT ON COLUMN users.last_login IS 'วันเวลาที่เข้าสู่ระบบครั้งล่าสุด';
 
 -- 2. Roles: ตำแหน่งหรือบทบาทการทำงาน
@@ -123,24 +127,45 @@ COMMENT ON TABLE role_permissions IS 'ตารางจับคู่บทบ
 COMMENT ON COLUMN role_permissions.role_id IS 'ID ของบทบาท';
 COMMENT ON COLUMN role_permissions.permission_id IS 'ID ของสิทธิ์';
 
--- 7. UserPermissions: สิทธิ์พิเศษรายบุคคล
+-- 7. UserPermissions: สิทธิ์พิเศษรายบุคคลแบบ Contextual (อิงตามหน่วยงาน)
 CREATE TABLE user_permissions (
     user_permissions_id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
+    org_id INTEGER,
     permission_id INTEGER NOT NULL,
     is_deny INT2 DEFAULT 0,
     expired_at TIMESTAMP,
     remark TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT unique_user_permission UNIQUE (user_id, permission_id)
+    CONSTRAINT unique_user_org_permission UNIQUE (user_id, org_id, permission_id)
 );
 
-COMMENT ON TABLE user_permissions IS 'ตารางให้สิทธิ์พิเศษเฉพาะรายบุคคล';
+COMMENT ON TABLE user_permissions IS 'ตารางให้สิทธิ์พิเศษรายบุคคลและหน่วยงาน (Override Permissions)';
 COMMENT ON COLUMN user_permissions.user_id IS 'ID ของผู้ใช้งาน';
-COMMENT ON COLUMN user_permissions.permission_id IS 'ID ของสิทธิ์ที่ได้รับเพิ่ม';
-COMMENT ON COLUMN user_permissions.is_deny IS 'สถานะสั่งห้าม (1 = ห้ามเข้าถึงแม้ Role จะอนุญาต, 0 = อนุญาต)';
+COMMENT ON COLUMN user_permissions.org_id IS 'ID ของหน่วยงาน (ระบุบริบทของสิทธิ์ ถ้า NULL หมายถึงสิทธิ์ Global)';
+COMMENT ON COLUMN user_permissions.permission_id IS 'ID ของสิทธิ์ย่อย';
+COMMENT ON COLUMN user_permissions.is_deny IS 'สถานะสั่งห้าม (1 = ห้ามเข้าถึงแม้ Role/Org จะอนุญาต, 0 = อนุญาต)';
 COMMENT ON COLUMN user_permissions.expired_at IS 'วันหมดอายุของสิทธิ์พิเศษ';
 COMMENT ON COLUMN user_permissions.remark IS 'หมายเหตุการให้สิทธิ์';
+
+-- ==========================================
+-- 📂 MIGRATION & ALTER COMMANDS (การแก้ไขตารางเดิม)
+-- ==========================================
+-- หากรันตาราง `user_permissions` ไปแล้ว ให้รันสคริปต์นี้เพื่อเพิ่ม org_id:
+--
+-- ALTER TABLE user_permissions ADD COLUMN org_id INTEGER;
+-- ALTER TABLE user_permissions DROP CONSTRAINT IF EXISTS unique_user_permission;
+-- ALTER TABLE user_permissions ADD CONSTRAINT unique_user_org_permission UNIQUE (user_id, org_id, permission_id);
+--
+-- COMMENT ON COLUMN user_permissions.org_id IS 'ID ของหน่วยงาน (ระบุบริบทของสิทธิ์ ถ้า NULL หมายถึงสิทธิ์ Global)';
+-- COMMENT ON TABLE user_permissions IS 'ตารางให้สิทธิ์พิเศษรายบุคคลและหน่วยงาน (Override Permissions)';
+
+-- หากรันตาราง `users` ไปแล้ว ให้รันสคริปต์นี้เพื่อเพิ่ม permission_status และ permission_remark:
+--
+-- ALTER TABLE users ADD COLUMN permission_status SMALLINT DEFAULT 1;
+-- ALTER TABLE users ADD COLUMN permission_remark TEXT;
+-- COMMENT ON COLUMN users.permission_status IS 'สถานะการใช้งาน (1 = เปิด, 0 = ปิด, 2 = ถูกบล็อก)';
+-- COMMENT ON COLUMN users.permission_remark IS 'หมายเหตุการบล็อกหรือปิดการใช้งาน';
 
 -- Indexes
 CREATE INDEX idx_users_sso_userid ON users(sso_userid);

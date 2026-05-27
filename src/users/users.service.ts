@@ -8,6 +8,8 @@ import {
 } from '@nestjs/common';
 import { FncDB } from 'src/common/services/fnc-db.service';
 import { PermissionsService } from 'src/permissions/permissions.service';
+import { AuditLogService, AuditContext } from 'src/common/services/audit-log.service';
+import { AssignUserRolesDto } from './dto/assign-user-roles.dto';
 
 @Injectable()
 export class UsersService {
@@ -16,6 +18,7 @@ export class UsersService {
   constructor(
     private readonly db: FncDB,
     private readonly permissionsService: PermissionsService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   async getUserRoleByUserId(user_id: number): Promise<any[]> {
@@ -77,5 +80,77 @@ export class UsersService {
       },
       roles: roles,
     };
+  }
+
+  async assignUserRoles(
+    userId: number,
+    dto: AssignUserRolesDto,
+    context?: AuditContext,
+  ) {
+    // ตรวจสอบว่าผู้ใช้งานนี้มีอยู่จริง
+    const users = await this.db.select<any>('users', { user_id: userId });
+    if (users.length === 0) {
+      throw new BadRequestException('ไม่พบผู้ใช้งานที่ระบุ');
+    }
+    const user = users[0];
+
+    // ดึง Roles เดิมเพื่อใช้ในการทำ Audit Log
+    const oldRolesData = await this.getUserRoleByUserId(userId).catch(() => []);
+    const oldRoleIds = oldRolesData.map((r: any) => r.role_id);
+
+    const client = await this.db.startTransaction();
+    try {
+      // 1. ลบ Roles เดิมทั้งหมด
+      await this.db.queryTx(
+        client,
+        'DELETE FROM user_roles WHERE user_id = $1',
+        [userId],
+      );
+
+      // 2. เพิ่ม Roles ใหม่
+      if (dto.roleIds && dto.roleIds.length > 0) {
+        for (const roleId of dto.roleIds) {
+          // ตรวจสอบว่า Role มีอยู่จริงและเปิดใช้งาน
+          const roleCheck = await this.db.query(
+            'SELECT 1 FROM roles WHERE role_id = $1 AND is_active = 1',
+            [roleId],
+          );
+          if (roleCheck.length === 0) {
+            throw new BadRequestException(
+              `ไม่พบรหัสบทบาท ${roleId} ในระบบ หรือบทบาทถูกระงับการใช้งาน`,
+            );
+          }
+
+          await this.db.insert(
+            'user_roles',
+            {
+              user_id: userId,
+              role_id: roleId,
+            },
+            client,
+          );
+        }
+      }
+
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'UPDATE',
+          moduleName: 'user_roles',
+          recordId: userId.toString(),
+          oldData: { roleIds: oldRoleIds },
+          newData: { roleIds: dto.roleIds },
+          remark: `กำหนดบทบาทหลัก (Global Roles) ให้กับผู้ใช้งาน "${user.sso_username || user.full_name}"`,
+        },
+        context,
+      );
+
+      await this.db.commit(client);
+      return { message: 'กำหนดบทบาทให้ผู้ใช้งานสำเร็จ' };
+    } catch (err: any) {
+      await this.db.rollback(client);
+      this.logger.error(`Assign user roles error: ${err.message}`);
+      throw err;
+    }
   }
 }

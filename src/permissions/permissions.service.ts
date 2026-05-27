@@ -256,4 +256,92 @@ export class PermissionsService {
       throw new BadRequestException('ไม่สามารถบันทึกสิทธิ์ได้ กรุณาลองใหม่อีกครั้ง');
     }
   }
+
+  async getEffectivePermissions(userId: number) {
+    // 1. ตรวจสอบ Profile และสิทธิ์รวมของ User
+    const users = await this.db.query(
+      'SELECT permission_status, permission_remark FROM users WHERE user_id = $1',
+      [userId]
+    );
+    if (users.length === 0) {
+      throw new BadRequestException('ไม่พบผู้ใช้งานในระบบ');
+    }
+    const userProfile = users[0];
+
+    // 2. ดึง Global Permissions จาก Roles ที่ Active
+    const globalPermsResult = await this.db.query(
+      `SELECT DISTINCT p.p_key 
+       FROM user_roles ur 
+       JOIN role_permissions rp ON ur.role_id = rp.role_id 
+       JOIN permissions p ON rp.permission_id = p.permission_id 
+       JOIN roles r ON r.role_id = ur.role_id 
+       WHERE ur.user_id = $1 
+         AND p.is_active = 1 
+         AND r.is_active = 1 
+         AND r.role_status = 1`,
+      [userId]
+    );
+    const globalPermissions = globalPermsResult.map((r: any) => r.p_key);
+
+    // 3. ดึง Organization Permissions (แยกตามหน่วยงานที่สังกัด)
+    const orgsResult = await this.db.query(
+      `SELECT o.org_id, o.org_name 
+       FROM user_organizations uo 
+       JOIN organizations o ON uo.org_id = o.org_id 
+       WHERE uo.user_id = $1 
+         AND o.is_active = 1 
+         AND o.permission_is_active = 1`,
+      [userId]
+    );
+
+    const organizations = [];
+
+    for (const org of orgsResult) {
+      // 3.1 สิทธิ์พื้นฐานของหน่วยงาน (Base Permissions)
+      const basePermsResult = await this.db.query(
+        `SELECT p.p_key 
+         FROM organization_permissions op 
+         JOIN permissions p ON op.permission_id = p.permission_id 
+         WHERE op.org_id = $1 AND p.is_active = 1`,
+        [org.org_id]
+      );
+      const basePerms = new Set(basePermsResult.map((r: any) => r.p_key));
+
+      // 3.2 สิทธิ์พิเศษของรายบุคคล (Overrides)
+      const overrideResult = await this.db.query(
+        `SELECT p.p_key, up.is_deny 
+         FROM user_permissions up 
+         JOIN permissions p ON up.permission_id = p.permission_id 
+         WHERE up.user_id = $1 AND up.org_id = $2 AND p.is_active = 1`,
+        [userId, org.org_id]
+      );
+
+      // คำนวณ (Base + อนุญาตเพิ่ม) - ถูกระงับ
+      for (const override of overrideResult) {
+        if (override.is_deny === 0) {
+          basePerms.add(override.p_key);
+        } else if (override.is_deny === 1) {
+          basePerms.delete(override.p_key);
+        }
+      }
+
+      // นำ Global Permissions มาบวกอัดเข้าไปใน Org นี้ด้วย (หน้าบ้านจะได้เช็คแค่ที่เดียว)
+      for (const gp of globalPermissions) {
+        basePerms.add(gp);
+      }
+
+      organizations.push({
+        org_id: org.org_id,
+        org_name: org.org_name,
+        permissions: Array.from(basePerms),
+      });
+    }
+
+    return {
+      permission_status: userProfile.permission_status,
+      permission_remark: userProfile.permission_remark,
+      global_permissions: globalPermissions,
+      organizations: organizations,
+    };
+  }
 }

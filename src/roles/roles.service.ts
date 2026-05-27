@@ -85,6 +85,8 @@ export class RolesService {
         {
           role_name: trimmedRoleName,
           description: dto.description || null,
+          role_status: dto.role_status !== undefined ? dto.role_status : 1,
+          role_remark: dto.role_remark || null,
           is_active: 1,
         },
         client,
@@ -153,6 +155,14 @@ export class RolesService {
 
     if (dto.description !== undefined) {
       updateData.description = dto.description;
+    }
+
+    if (dto.role_status !== undefined) {
+      updateData.role_status = dto.role_status;
+    }
+
+    if (dto.role_remark !== undefined) {
+      updateData.role_remark = dto.role_remark;
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -230,7 +240,7 @@ export class RolesService {
 
   // 6. ดึง Permission IDs ทั้งหมดที่ผูกกับบทบาทนี้
   async getPermissions(roleId: number) {
-    await this.findOne(roleId); // เช็คว่าบทบาทมีตัวตนจริงหรือไม่ก่อน
+    const role = await this.findOne(roleId); // เช็คว่าบทบาทมีตัวตนจริงหรือไม่ก่อน
 
     const rows = await this.db.query(
       `SELECT permission_id 
@@ -239,7 +249,11 @@ export class RolesService {
       [roleId],
     );
 
-    return rows.map((r: any) => r.permission_id);
+    return {
+      role_status: role.role_status,
+      role_remark: role.role_remark,
+      permissionIds: rows.map((r: any) => r.permission_id)
+    };
   }
 
   // 7. กำหนดความผูกพันของสิทธิ์ให้กับบทบาท (Assign Permissions Matrix)
@@ -251,11 +265,20 @@ export class RolesService {
     const role = await this.findOne(roleId);
 
     // ดึงสิทธิ์เดิมสำหรับทำ Audit Log
-    const oldPermissions = await this.getPermissions(roleId);
+    const oldPermissionsData = await this.getPermissions(roleId);
+
+    const updateRoleData: any = {};
+    if (dto.role_status !== undefined) updateRoleData.role_status = dto.role_status;
+    if (dto.role_remark !== undefined) updateRoleData.role_remark = dto.role_remark;
 
     const client = await this.db.startTransaction();
     try {
-      // ขั้นตอน A: ลบความสัมพันธ์สิทธิ์เดิมออกทั้งหมด
+      // ขั้นตอน A1: อัปเดตสถานะและหมายเหตุของ Role (ถ้ามีการส่งมา)
+      if (Object.keys(updateRoleData).length > 0) {
+        await this.db.update('roles', updateRoleData, { role_id: roleId }, client);
+      }
+
+      // ขั้นตอน A2: ลบความสัมพันธ์สิทธิ์เดิมออกทั้งหมด
       await this.db.queryTx(
         client,
         'DELETE FROM role_permissions WHERE role_id = $1',
@@ -293,9 +316,17 @@ export class RolesService {
           actionType: 'UPDATE',
           moduleName: 'role_permissions',
           recordId: roleId.toString(),
-          oldData: { permissionIds: oldPermissions },
-          newData: { permissionIds: dto.permissionIds },
-          remark: `แก้ไขการผูกสิทธิ์สำหรับบทบาท "${role.role_name}" (สิทธิ์ใหม่: ${dto.permissionIds.length} รายการ)`,
+          oldData: { 
+            permissionIds: oldPermissionsData.permissionIds, 
+            role_status: role.role_status, 
+            role_remark: role.role_remark 
+          },
+          newData: { 
+            permissionIds: dto.permissionIds, 
+            role_status: dto.role_status !== undefined ? dto.role_status : role.role_status,
+            role_remark: dto.role_remark !== undefined ? dto.role_remark : role.role_remark 
+          },
+          remark: `แก้ไขการผูกสิทธิ์และสถานะ สำหรับบทบาท "${role.role_name}" (สิทธิ์ใหม่: ${dto.permissionIds.length} รายการ)`,
         },
         context,
       );

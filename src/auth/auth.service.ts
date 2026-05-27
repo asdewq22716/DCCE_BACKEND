@@ -82,6 +82,19 @@ export class AuthService extends BaseApiService {
       }
 
       const u = users[0];
+
+      // 4. ตรวจสอบว่ามี Role ผูกอยู่หรือไม่ ถ้ายังไม่มี ให้ผูกเป็น 'USER' อัตโนมัติ (Default Role)
+      const userRoles = await this.db.query('SELECT role_id FROM user_roles WHERE user_id = $1', [u.user_id]);
+      if (userRoles.length === 0) {
+        const defaultRole = await this.db.query("SELECT role_id FROM roles WHERE UPPER(role_name) = 'USER' AND is_active = 1");
+        if (defaultRole.length > 0) {
+          await this.db.insert('user_roles', { user_id: u.user_id, role_id: defaultRole[0].role_id });
+          this.logger.log(`Auto-assigned default 'USER' role to user_id: ${u.user_id}`);
+        } else {
+          this.logger.warn(`Default 'USER' role not found in database! Please create it.`);
+        }
+      }
+
       return this.mapUserToResponse(u);
     } catch (err: any) {
       this.logger.error(`Login Process Error Detail:`, err); // พ่น error ทั้งก้อนลง log server

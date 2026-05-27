@@ -19,7 +19,7 @@ import { RolesModule } from './roles/roles.module';
     PermissionsModule,
     OrganizationsModule,
     AuditLogsModule,
-    /* RolesModule, */
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

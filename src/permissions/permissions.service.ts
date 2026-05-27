@@ -225,7 +225,7 @@ export class PermissionsService {
         const updateData: any = {};
         if (dto.permission_status !== undefined) updateData.permission_status = dto.permission_status;
         if (dto.permission_remark !== undefined) updateData.permission_remark = dto.permission_remark;
-        
+
         await this.db.update('users', updateData, { user_id: userId }, client);
       }
 
@@ -242,7 +242,7 @@ export class PermissionsService {
           const orgId = item.org_id;
           const permissionIds = item.permissionIds || [];
 
-          // Insert ข้อมูลใหม่ทั้งหมด (อันไหนถูกเลือกให้ is_deny=0, อันไหนไม่ถูกเลือกให้ is_deny=1)
+          // 3.1 Insert ข้อมูลสิทธิ์ใหม่ทั้งหมด (อันไหนถูกเลือกให้ is_deny=0, อันไหนไม่ถูกเลือกให้ is_deny=1)
           for (const pid of allPermissions) {
             const isDeny = permissionIds.includes(pid) ? 0 : 1;
             await this.db.insert(
@@ -321,13 +321,16 @@ export class PermissionsService {
     );
     const globalPermissions = globalPermsResult.map((r: any) => r.p_key);
 
-    // 3. ดึง Organization Permissions (แยกตามหน่วยงานที่สังกัด)
+    // 3. ดึง Organization Permissions (แยกตามหน่วยงานที่สังกัด และหน่วยงานย่อยที่มีสิทธิ์พิเศษ)
     const orgsResult = await this.db.query(
-      `SELECT o.org_id, o.org_name 
-       FROM user_organizations uo 
-       JOIN organizations o ON uo.org_id = o.org_id 
-       WHERE uo.user_id = $1 
-         AND o.is_active = 1 
+      `SELECT DISTINCT o.org_id, o.org_name 
+       FROM (
+         SELECT org_id FROM user_organizations WHERE user_id = $1
+         UNION
+         SELECT org_id FROM user_permissions WHERE user_id = $1 AND org_id IS NOT NULL
+       ) AS combined_orgs 
+       JOIN organizations o ON combined_orgs.org_id = o.org_id 
+       WHERE o.is_active = 1 
          AND o.permission_is_active = 1`,
       [userId]
     );
@@ -363,11 +366,7 @@ export class PermissionsService {
         }
       }
 
-      // 3.3 นำ Global Permissions (จาก Role) มาทับเป็นขั้นสุดท้าย! 
-      // (สิทธิ์แอดมินหรือ Role หลักจะไม่มีวันถูกลบโดยการ Override ระดับหน่วยงาน)
-      for (const gp of globalPermissions) {
-        basePerms.add(gp);
-      }
+
       organizations.push({
         org_id: org.org_id,
         org_name: org.org_name,

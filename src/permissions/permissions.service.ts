@@ -45,7 +45,7 @@ export class PermissionsService {
     return buildTree(null);
   }
 
-  async syncPermissions(dto: SyncPermissionsDto) {
+  async syncPermissions(dto: SyncPermissionsDto, context: AuditContext) {
     const client = await this.db.startTransaction();
     try {
       // 1. จัดการการลบ (Soft Delete) ก่อน
@@ -129,7 +129,20 @@ export class PermissionsService {
         }
       }
 
-      // 3. ยืนยันการทำงานทั้งหมด
+      // 3. บันทึกประวัติการกระทำ (Audit Log)
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'UPDATE',
+          moduleName: 'permissions',
+          recordId: 'SYNC',
+          newData: dto,
+          remark: 'ปรับปรุงโครงสร้างสิทธิ์ทั้งหมดของระบบ (Bulk Sync)',
+        },
+        context
+      );
+
+      // 4. ยืนยันการทำงานทั้งหมด
       await this.db.commit(client);
       return { message: 'บันทึกโครงสร้างสิทธิ์ทั้งหมดสำเร็จ (Sync Success)' };
     } catch (err: any) {
@@ -140,7 +153,14 @@ export class PermissionsService {
   }
 
   async getUserAllOrgPermissions(userId: number) {
-    // ดึงข้อมูล override ทั้งหมดของ user นี้เฉพาะที่อนุญาต (is_deny = 0)
+    // 1. ดึงสถานะของ User
+    const users = await this.db.query(
+      'SELECT permission_status, permission_remark FROM users WHERE user_id = $1',
+      [userId],
+    );
+    const userProfile = users.length > 0 ? users[0] : { permission_status: 1, permission_remark: null };
+
+    // 2. ดึงข้อมูล override ทั้งหมดของ user นี้เฉพาะที่อนุญาต (is_deny = 0)
     const overridePermissions = await this.db.query(
       'SELECT org_id, permission_id FROM user_permissions WHERE user_id = $1 AND is_deny = 0',
       [userId],
@@ -155,10 +175,16 @@ export class PermissionsService {
       return acc;
     }, {});
 
-    return Object.keys(grouped).map((orgId) => ({
+    const orgPermissionsArray = Object.keys(grouped).map((orgId) => ({
       org_id: parseInt(orgId),
-      permissions: grouped[orgId],
+      permissionIds: grouped[orgId], // ตรงกับ Field ขา POST
     }));
+
+    return {
+      permission_status: userProfile.permission_status,
+      permission_remark: userProfile.permission_remark,
+      orgPermissions: orgPermissionsArray,
+    };
   }
 
   async getUserOrgPermissions(userId: number, orgId: number) {

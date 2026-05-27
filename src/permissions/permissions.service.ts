@@ -4,13 +4,18 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FncDB } from 'src/common/services/fnc-db.service';
+import { AuditLogService, AuditContext } from 'src/common/services/audit-log.service';
 import { SyncPermissionsDto, SyncGroupDto } from './dto/sync-permissions.dto';
+import { BulkUpdateUserOrgPermissionsDto } from './dto/user-org-permissions.dto';
 
 @Injectable()
 export class PermissionsService {
   private readonly logger = new Logger(PermissionsService.name);
 
-  constructor(private readonly db: FncDB) { }
+  constructor(
+    private readonly db: FncDB,
+    private readonly auditLog: AuditLogService,
+  ) { }
 
   async getPermissionsTree() {
     // ดึงกลุ่มทั้งหมดที่ Active
@@ -186,15 +191,24 @@ export class PermissionsService {
     };
   }
 
-  async saveAllUserOrgPermissions(userId: number, orgPermissions: { org_id: number; permissionIds: number[] }[]) {
+  async saveAllUserOrgPermissions(userId: number, dto: BulkUpdateUserOrgPermissionsDto, context: AuditContext) {
     const client = await this.db.startTransaction();
     try {
+      // 0. อัปเดตสถานะการใช้งานและหมายเหตุในตาราง users ถ้ามีการส่งมา
+      if (dto.permission_status !== undefined || dto.permission_remark !== undefined) {
+        const updateData: any = {};
+        if (dto.permission_status !== undefined) updateData.permission_status = dto.permission_status;
+        if (dto.permission_remark !== undefined) updateData.permission_remark = dto.permission_remark;
+        
+        await this.db.update('users', updateData, { user_id: userId }, client);
+      }
+
       // 1. ดึงสิทธิ์ทั้งหมดที่มีในระบบ เพื่อเอามาเซ็ตค่า is_deny
       const allPermissionsResult = await this.db.query('SELECT permission_id FROM permissions WHERE is_active = 1');
       const allPermissions = allPermissionsResult.map((p: any) => p.permission_id);
 
       // 2. Loop วนทีละหน่วยงานที่ส่งมาเพื่อบันทึก
-      for (const item of orgPermissions) {
+      for (const item of dto.orgPermissions) {
         const orgId = item.org_id;
         const permissionIds = item.permissionIds || [];
 
@@ -216,6 +230,23 @@ export class PermissionsService {
           );
         }
       }
+
+      // 3. บันทึกประวัติการกระทำ (Audit Log)
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'UPDATE',
+          moduleName: 'user_permissions',
+          recordId: userId.toString(),
+          newData: {
+            permission_status: dto.permission_status,
+            permission_remark: dto.permission_remark,
+            orgPermissions: dto.orgPermissions,
+          },
+          remark: 'อัปเดตสิทธิ์รายบุคคล (Override)',
+        },
+        context
+      );
 
       await this.db.commit(client);
       return { message: 'บันทึกสิทธิ์ทุกหน่วยงานสำเร็จ' };

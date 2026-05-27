@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNumber, ValidateNested } from 'class-validator';
+import { IsArray, IsNumber, ValidateNested, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class OrgPermissionItemDto {
@@ -28,9 +28,12 @@ export class BulkUpdateUserOrgPermissionsDto {
   orgPermissions: OrgPermissionItemDto[];
 
   @ApiProperty({ description: 'สถานะการใช้งาน (1 = เปิด, 0 = ปิด, 2 = ถูกบล็อก)', example: 1, required: false })
+  @IsOptional()
   @IsNumber()
   permission_status?: number;
 
   @ApiProperty({ description: 'หมายเหตุการบล็อกหรือปิดการใช้งาน', example: 'พ้นสภาพพนักงาน', required: false })
+  @IsOptional()
+  @IsString()
   permission_remark?: string;
 }

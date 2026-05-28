@@ -239,4 +239,32 @@ export class UploadsService {
 
     this.logger.log(`Cleaned up ${deletedCount} old temp files.`);
   }
+
+  /**
+   * สร้าง SQL Subquery สำหรับดึงรูปภาพของตารางนั้นๆ ให้ออกมาเป็น JSON Array
+   * ใช้เพื่อจัด Format ส่งออก (Export) ให้เหมือนกันทุก Module
+   */
+  buildFilesSubquery(refTable: string, refIdColumn: string, tag: string): string {
+    return `(
+      SELECT COALESCE(
+        json_agg(
+          json_build_object(
+            'id', u.id,
+            'path', u.path,
+            'original_name', u.original_name,
+            'size', u.size,
+            'mime_type', u.mime_type,
+            'extension', u.extension,
+            'sort_order', u.sort_order
+          ) ORDER BY u.sort_order ASC
+        ),
+        '[]'
+      )
+      FROM uploads u 
+      WHERE u.ref_table = '${refTable}' 
+        AND u.ref_id = ${refIdColumn} 
+        AND u.tag = '${tag}' 
+        AND u.is_active = 1
+    )`;
+  }
 }

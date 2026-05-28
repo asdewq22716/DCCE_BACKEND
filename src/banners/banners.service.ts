@@ -98,16 +98,8 @@ export class BannersService {
     const sql = `
       SELECT 
         b.*,
-        (
-          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name) ORDER BY u.sort_order ASC), '[]')
-          FROM uploads u 
-          WHERE u.ref_table = 'banners' AND u.ref_id = b.id AND u.tag = 'pc' AND u.is_active = 1
-        ) AS pc_images,
-        (
-          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name) ORDER BY u.sort_order ASC), '[]')
-          FROM uploads u 
-          WHERE u.ref_table = 'banners' AND u.ref_id = b.id AND u.tag = 'mobile' AND u.is_active = 1
-        ) AS mobile_images
+        ${this.uploadsService.buildFilesSubquery('banners', 'b.id', 'pc')} AS pc_images,
+        ${this.uploadsService.buildFilesSubquery('banners', 'b.id', 'mobile')} AS mobile_images
       FROM banners b
       WHERE b.deleted_at IS NULL
       ORDER BY b.sort_order ASC, b.created_at DESC
@@ -119,16 +111,8 @@ export class BannersService {
     const sql = `
       SELECT 
         b.*,
-        (
-          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name) ORDER BY u.sort_order ASC), '[]')
-          FROM uploads u 
-          WHERE u.ref_table = 'banners' AND u.ref_id = b.id AND u.tag = 'pc' AND u.is_active = 1
-        ) AS pc_images,
-        (
-          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name) ORDER BY u.sort_order ASC), '[]')
-          FROM uploads u 
-          WHERE u.ref_table = 'banners' AND u.ref_id = b.id AND u.tag = 'mobile' AND u.is_active = 1
-        ) AS mobile_images
+        ${this.uploadsService.buildFilesSubquery('banners', 'b.id', 'pc')} AS pc_images,
+        ${this.uploadsService.buildFilesSubquery('banners', 'b.id', 'mobile')} AS mobile_images
       FROM banners b
       WHERE b.id = $1 AND b.deleted_at IS NULL
     `;

@@ -20,7 +20,7 @@ export interface AuditPayload {
 export class AuditLogService {
   private readonly logger = new Logger(AuditLogService.name);
 
-  constructor(private readonly db: FncDB) {}
+  constructor(private readonly db: FncDB) { }
 
   /**
    * บันทึกประวัติกิจกรรมและการแก้ไขลงตาราง audit_logs
@@ -49,5 +49,52 @@ export class AuditLogService {
       this.logger.error(`Failed to write audit log: ${err.message}`);
       throw err; // เพื่อให้เกิด rollback ในทรานแซกชันหลักหากคิวรีนี้ล้มเหลว
     }
+  }
+
+  /**
+   * ดึงข้อมูลประวัติกิจกรรม (Audit Logs) ตามโมดูลและ ID
+   * @param moduleName ชื่อโมดูล เช่น 'banners'
+   * @param recordId ID ของข้อมูลที่ต้องการดูประวัติ
+   */
+  async getLogs(moduleName: string, recordId: string) {
+    const sql = `
+      SELECT 
+        a.log_id,
+        a.action_type,
+        a.created_at,
+        a.created_by,
+        u.sso_firstname,
+        u.sso_lastname,
+        u.full_name,
+        a.old_data,
+        a.new_data,
+        a.remark
+      FROM audit_logs a
+      LEFT JOIN users u ON a.created_by = u.user_id
+      WHERE a.module_name = $1 AND a.record_id = $2
+      ORDER BY a.created_at DESC
+    `;
+    const logs = await this.db.query(sql, [moduleName, recordId]);
+
+    // แปลงข้อมูล JSON string กลับเป็น Object
+    return logs.map((log: any) => ({
+      ...log,
+      old_data: log.old_data ? (typeof log.old_data === 'string' ? JSON.parse(log.old_data) : log.old_data) : null,
+      new_data: log.new_data ? (typeof log.new_data === 'string' ? JSON.parse(log.new_data) : log.new_data) : null,
+    }));
+  }
+
+  /**
+   * ดึงรายชื่อโมดูลทั้งหมดที่มีการบันทึก Log ในระบบ (สำหรับทำ Dropdown)
+   */
+  async getAvailableModules() {
+    const sql = `
+      SELECT DISTINCT module_name 
+      FROM audit_logs 
+      WHERE module_name IS NOT NULL
+      ORDER BY module_name ASC
+    `;
+    const rows = await this.db.query(sql);
+    return rows.map((r: any) => r.module_name);
   }
 }

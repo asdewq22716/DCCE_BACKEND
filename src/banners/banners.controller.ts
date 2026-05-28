@@ -48,4 +48,12 @@ export class BannersController {
     const userId = req.user?.userId ? req.user.userId.toString() : 'anonymous';
     return this.bannersService.remove(+id, userId);
   }
+
+  @Get(':id/logs')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'ดูประวัติการแก้ไขแบนเนอร์ (Audit Logs)' })
+  getLogs(@Param('id') id: string) {
+    return this.bannersService.getLogs(+id);
+  }
 }

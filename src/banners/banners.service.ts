@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { FncDB } from '../common/services/fnc-db.service';
+import { AuditLogService } from '../common/services/audit-log.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
@@ -10,7 +11,8 @@ export class BannersService {
 
   constructor(
     private readonly db: FncDB,
-    private readonly uploadsService: UploadsService
+    private readonly uploadsService: UploadsService,
+    private readonly auditLogService: AuditLogService
   ) { }
 
   async create(createBannerDto: CreateBannerDto, userId: string) {
@@ -72,6 +74,15 @@ export class BannersService {
         });
       }
 
+      // 6. บันทึก Audit Log
+      await this.auditLogService.log(client, {
+        actionType: 'CREATE',
+        moduleName: 'banners',
+        recordId: banner.id.toString(),
+        newData: bannerData,
+        remark: 'สร้างแบนเนอร์ใหม่'
+      }, { userId: parseInt(userId, 10) });
+
       await this.db.commit(client);
       return { success: true, bannerId: banner.id, message: 'สร้างแบนเนอร์สำเร็จ' };
 
@@ -88,12 +99,12 @@ export class BannersService {
       SELECT 
         b.*,
         (
-          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name)), '[]')
+          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name) ORDER BY u.sort_order ASC), '[]')
           FROM uploads u 
           WHERE u.ref_table = 'banners' AND u.ref_id = b.id AND u.tag = 'pc' AND u.is_active = 1
         ) AS pc_images,
         (
-          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name)), '[]')
+          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name) ORDER BY u.sort_order ASC), '[]')
           FROM uploads u 
           WHERE u.ref_table = 'banners' AND u.ref_id = b.id AND u.tag = 'mobile' AND u.is_active = 1
         ) AS mobile_images
@@ -109,12 +120,12 @@ export class BannersService {
       SELECT 
         b.*,
         (
-          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name)), '[]')
+          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name) ORDER BY u.sort_order ASC), '[]')
           FROM uploads u 
           WHERE u.ref_table = 'banners' AND u.ref_id = b.id AND u.tag = 'pc' AND u.is_active = 1
         ) AS pc_images,
         (
-          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name)), '[]')
+          SELECT COALESCE(json_agg(json_build_object('id', u.id, 'path', u.path, 'original_name', u.original_name) ORDER BY u.sort_order ASC), '[]')
           FROM uploads u 
           WHERE u.ref_table = 'banners' AND u.ref_id = b.id AND u.tag = 'mobile' AND u.is_active = 1
         ) AS mobile_images
@@ -131,7 +142,7 @@ export class BannersService {
   }
 
   async update(id: number, updateBannerDto: UpdateBannerDto, userId: string) {
-    await this.findOne(id); // ตรวจสอบว่ามีอยู่จริง
+    const oldBanner = await this.findOne(id); // ตรวจสอบว่ามีอยู่จริง และเก็บค่าเดิมไว้ทำ Log
 
     const client = await this.db.startTransaction();
     try {
@@ -186,6 +197,16 @@ export class BannersService {
         });
       }
 
+      // บันทึก Audit Log
+      await this.auditLogService.log(client, {
+        actionType: 'UPDATE',
+        moduleName: 'banners',
+        recordId: id.toString(),
+        oldData: oldBanner,
+        newData: bannerData,
+        remark: 'อัปเดตข้อมูลแบนเนอร์'
+      }, { userId: parseInt(userId, 10) });
+
       await this.db.commit(client);
       return { success: true, message: 'อัปเดตแบนเนอร์สำเร็จ' };
     } catch (error: any) {
@@ -196,7 +217,7 @@ export class BannersService {
   }
 
   async remove(id: number, userId: string) {
-    await this.findOne(id);
+    const oldBanner = await this.findOne(id);
 
     // Soft Delete Banner
     await this.db.update('banners', {
@@ -204,6 +225,15 @@ export class BannersService {
       deleted_at: new Date(),
       deleted_by: userId
     }, { id });
+
+    // บันทึก Audit Log (ไม่ต้องใช้ transaction เพราะ db.update รันไปแล้ว)
+    await this.auditLogService.log(undefined, {
+      actionType: 'DELETE',
+      moduleName: 'banners',
+      recordId: id.toString(),
+      oldData: oldBanner,
+      remark: 'ลบแบนเนอร์ (Soft Delete)'
+    }, { userId: parseInt(userId, 10) });
 
     return { success: true, message: 'ลบแบนเนอร์สำเร็จ' };
   }

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BannersModule } from './banners/banners.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -24,6 +25,7 @@ import { UploadsModule } from './uploads/uploads.module';
     RolesModule,
     ScheduleModule.forRoot(),
     UploadsModule,
+    BannersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

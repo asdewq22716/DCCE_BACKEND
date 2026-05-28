@@ -198,6 +198,16 @@ export class UploadsService {
     if (toAdd.length > 0) {
       await this.linkFiles({ uploadIds: toAdd, refTable, refId, tag, userId, client });
     }
+
+    // 5. Update sort_order ให้ตรงกับลำดับใน newUploadIds
+    for (let i = 0; i < newUploadIds.length; i++) {
+      const updateOrderSql = `UPDATE uploads SET sort_order = $1 WHERE id = $2`;
+      if (client) {
+         await this.db.queryTx(client, updateOrderSql, [i + 1, newUploadIds[i]]);
+      } else {
+         await this.db.query(updateOrderSql, [i + 1, newUploadIds[i]]);
+      }
+    }
   }
 
   // Cron Job รันทุกเที่ยงคืนเพื่อลบไฟล์ Temp ที่อายุเกิน 24 ชั่วโมง

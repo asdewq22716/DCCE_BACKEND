@@ -9,12 +9,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: any) => {
-          const data = request?.cookies['access_token'];
+          console.log('--- JWT Strategy Debug ---');
+          console.log('Cookies:', request?.cookies);
+          console.log('Auth Header:', request?.headers?.authorization);
+          
+          const data = request?.cookies?.['access_token'];
           if (!data) {
+            console.log('No access_token cookie found. Trying Bearer token...');
             return null;
           }
+          console.log('Found access_token cookie:', data.substring(0, 20) + '...');
           return data;
         },
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
       // 2. ใช้ Secret Key ตัวเดียวกับตอน Sign Token

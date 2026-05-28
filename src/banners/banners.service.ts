@@ -151,11 +151,8 @@ export class BannersService {
       // อัปเดตรูปภาพ PC (ถ้าส่งอาเรย์มา)
       // ----------------------------------------
       if (updateBannerDto.image_pc_ids) {
-        // 1. Soft Delete รูป PC เดิมทั้งหมดที่ active อยู่ (ตั้ง is_active=0)
-        await this.uploadsService.unlinkFiles({ refTable: 'banners', refId: id, tag: 'pc', userId, client });
-        // 2. Link รูปชุดใหม่ทั้งหมด (ย้ายไฟล์จาก temp + อัปเดต ref ใน DB)
-        await this.uploadsService.linkFiles({
-          uploadIds: updateBannerDto.image_pc_ids,
+        await this.uploadsService.syncFiles({
+          newUploadIds: updateBannerDto.image_pc_ids,
           refTable: 'banners',
           refId: id,
           tag: 'pc',
@@ -168,11 +165,8 @@ export class BannersService {
       // อัปเดตรูปภาพ Mobile (ถ้าส่งอาเรย์มา)
       // ----------------------------------------
       if (updateBannerDto.image_mobile_ids) {
-        // 1. Soft Delete รูป Mobile เดิมทั้งหมดที่ active อยู่
-        await this.uploadsService.unlinkFiles({ refTable: 'banners', refId: id, tag: 'mobile', userId, client });
-        // 2. Link รูปชุดใหม่ทั้งหมด
-        await this.uploadsService.linkFiles({
-          uploadIds: updateBannerDto.image_mobile_ids,
+        await this.uploadsService.syncFiles({
+          newUploadIds: updateBannerDto.image_mobile_ids,
           refTable: 'banners',
           refId: id,
           tag: 'mobile',
@@ -196,7 +190,7 @@ export class BannersService {
     } catch (error: any) {
       await this.db.rollback(client);
       this.logger.error(`Failed to update banner: ${error.message}`, error.stack);
-      throw new BadRequestException('เกิดข้อผิดพลาดในการอัปเดตแบนเนอร์');
+      throw new BadRequestException(`เกิดข้อผิดพลาด: ${error.message}`);
     }
   }
 

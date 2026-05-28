@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BannersModule } from './banners/banners.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -9,6 +10,8 @@ import { PermissionsModule } from './permissions/permissions.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { RolesModule } from './roles/roles.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -20,6 +23,9 @@ import { RolesModule } from './roles/roles.module';
     OrganizationsModule,
     AuditLogsModule,
     RolesModule,
+    ScheduleModule.forRoot(),
+    UploadsModule,
+    BannersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -125,6 +125,25 @@ export class FncDB {
   // ---------- CRUD Helpers ----------
 
   /**
+   * ตรวจสอบว่ามีข้อมูลในตารางตามเงื่อนไขหรือไม่
+   * @example await this.db.exists('uploads', { id: 1, is_active: 1 })
+   */
+  async exists(
+    table: string,
+    where: Record<string, any>,
+    client?: PoolClient,
+  ): Promise<boolean> {
+    const { clause, values } = this.buildWhereClause(where);
+    const sql = `SELECT 1 FROM "${table}" WHERE ${clause} LIMIT 1`;
+    
+    const result = client 
+      ? await this.queryTx(client, sql, values)
+      : await this.query(sql, values);
+      
+    return result.length > 0;
+  }
+
+  /**
    * ค้นหาข้อมูล (Select) แบบง่าย
    * @example await this.db.select('users', { status: 'active' })
    */

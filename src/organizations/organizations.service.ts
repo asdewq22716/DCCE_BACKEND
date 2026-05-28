@@ -473,21 +473,7 @@ export class OrganizationsService {
         throw new NotFoundException('ไม่พบข้อมูลผู้ใช้งานที่ระบุ');
       }
 
-      const history = await this.db.query(
-        `SELECT
-          log_id,
-          action_type,
-          old_data,
-          new_data,
-          remark,
-          created_by,
-          created_at
-        FROM audit_logs
-        WHERE module_name = 'user_organizations' AND record_id = $1
-        ORDER BY created_at DESC`,
-        [userId.toString()],
-      );
-      return history;
+      return await this.auditLog.getLogs('user_organizations', userId.toString());
     } catch (err: any) {
       if (err instanceof NotFoundException) throw err;
       this.logger.error(

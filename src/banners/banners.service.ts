@@ -205,7 +205,7 @@ export class BannersService {
     }, { id });
 
     // บันทึก Audit Log (ไม่ต้องใช้ transaction เพราะ db.update รันไปแล้ว)
-    await this.auditLogService.log(undefined, {
+    await this.auditLogService.log(null, {
       actionType: 'DELETE',
       moduleName: 'banners',
       recordId: id.toString(),
@@ -214,5 +214,9 @@ export class BannersService {
     }, { userId: parseInt(userId, 10) });
 
     return { success: true, message: 'ลบแบนเนอร์สำเร็จ' };
+  }
+
+  async getLogs(id: number) {
+    return this.auditLogService.getLogs('banners', id.toString());
   }
 }

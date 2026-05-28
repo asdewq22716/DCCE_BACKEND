@@ -93,14 +93,14 @@ export class UploadsService {
       }
 
       // 4. อัปเดตข้อมูลไฟล์ใน DB
+      const sortOrder = uploadIds.indexOf(file.id) + 1; // ลำดับเริ่มที่ 1
       const updateData = {
         ref_table: refTable,
         ref_id: refId,
         tag: tag,
         is_temp: 0,
-        path: newUrlPath,
-        updated_by: userId,
-        updated_at: new Date()
+        sort_order: sortOrder,
+        path: newUrlPath
       };
 
       if (client) {

@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DCCE Backend — Data Dictionary</title>
+  <meta name="description" content="Data Dictionary สำหรับ DCCE Backend ระบุโครงสร้างตาราง ประเภทข้อมูล และคำอธิบาย column ทุกตารางในระบบ" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ===== CSS VARIABLES ===== */
+    :root[data-theme="dark"] {
+      --bg-base:        #0d1117;
+      --bg-sidebar:     #161b22;
+      --bg-card:        #1c2128;
+      --bg-card-hover:  #222b35;
+      --bg-th:          #21262d;
+      --bg-tag:         #1f3044;
+      --border:         #30363d;
+      --border-accent:  #3d4e60;
+      --text-primary:   #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted:     #6e7681;
+      --accent:         #58a6ff;
+      --accent-soft:    rgba(88, 166, 255, 0.12);
+      --accent-border:  rgba(88, 166, 255, 0.3);
+      --tag-pk:         #3fb950;
+      --tag-pk-bg:      rgba(63, 185, 80, 0.12);
+      --tag-fk:         #d29922;
+      --tag-fk-bg:      rgba(210, 153, 34, 0.12);
+      --tag-idx:        #58a6ff;
+      --tag-idx-bg:     rgba(88, 166, 255, 0.12);
+      --tag-null:       #8b949e;
+      --tag-null-bg:    rgba(139, 148, 158, 0.1);
+      --tag-nn:         #f85149;
+      --tag-nn-bg:      rgba(248, 81, 73, 0.12);
+      --shadow:         0 4px 24px rgba(0,0,0,0.4);
+      --scrollbar-bg:   #21262d;
+      --scrollbar-thumb:#30363d;
+      --toggle-bg:      #21262d;
+      --header-glass:   rgba(13, 17, 23, 0.85);
+    }
+    :root[data-theme="light"] {
+      --bg-base:        #f6f8fa;
+      --bg-sidebar:     #ffffff;
+      --bg-card:        #ffffff;
+      --bg-card-hover:  #f0f6ff;
+      --bg-th:          #f0f4f8;
+      --bg-tag:         #dbeafe;
+      --border:         #d0d7de;
+      --border-accent:  #a5c8f0;
+      --text-primary:   #1f2328;
+      --text-secondary: #57606a;
+      --text-muted:     #8c959f;
+      --accent:         #0969da;
+      --accent-soft:    rgba(9, 105, 218, 0.08);
+      --accent-border:  rgba(9, 105, 218, 0.25);
+      --tag-pk:         #1a7f37;
+      --tag-pk-bg:      rgba(26, 127, 55, 0.1);
+      --tag-fk:         #9a6700;
+      --tag-fk-bg:      rgba(154, 103, 0, 0.1);
+      --tag-idx:        #0969da;
+      --tag-idx-bg:     rgba(9, 105, 218, 0.1);
+      --tag-null:       #57606a;
+      --tag-null-bg:    rgba(87, 96, 106, 0.08);
+      --tag-nn:         #cf222e;
+      --tag-nn-bg:      rgba(207, 34, 46, 0.1);
+      --shadow:         0 2px 12px rgba(0,0,0,0.08);
+      --scrollbar-bg:   #f0f4f8;
+      --scrollbar-thumb:#c9d1d9;
+      --toggle-bg:      #e8edf2;
+      --header-glass:   rgba(246, 248, 250, 0.9);
+    }
+
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      line-height: 1.6;
+      transition: background 0.3s ease, color 0.3s ease;
+      min-height: 100vh;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+    /* ===== LAYOUT ===== */
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: 260px;
+      min-width: 260px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      margin-bottom: 8px;
+    }
+    .sidebar-logo h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+    .sidebar-logo p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .sidebar-search {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-search input {
+      width: 100%;
+      padding: 7px 12px;
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .sidebar-search input:focus { border-color: var(--accent); }
+    .sidebar-search input::placeholder { color: var(--text-muted); }
+    .sidebar-nav { padding: 8px 0; flex: 1; }
+    .nav-group-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 10px 20px 4px;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 20px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .nav-link:hover { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); }
+    .nav-link.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); font-weight: 600; }
+    .nav-link .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--border-accent);
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .nav-link:hover .dot, .nav-link.active .dot { background: var(--accent); }
+    .nav-count {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: var(--bg-th);
+      color: var(--text-muted);
+    }
+
+    /* ===== MAIN ===== */
+    .main { flex: 1; overflow-y: auto; }
+
+    /* ===== HEADER ===== */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--header-glass);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.3s ease;
+    }
+    .header-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .header-subtitle { font-size: 12px; color: var(--text-muted); }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .table-count-badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      font-weight: 600;
+    }
+
+    /* ===== TOGGLE SWITCH ===== */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-switch {
+      width: 44px; height: 24px;
+      background: var(--toggle-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      position: relative;
+      transition: background 0.3s;
+      cursor: pointer;
+    }
+    .toggle-knob {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    [data-theme="light"] .toggle-knob { transform: translateX(20px); }
+    .theme-icon { font-size: 14px; }
+
+    /* ===== CONTENT ===== */
+    .content { padding: 32px; max-width: 1100px; }
+    .hero {
+      margin-bottom: 40px;
+      padding: 28px 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      border-left: 4px solid var(--accent);
+      box-shadow: var(--shadow);
+    }
+    .hero h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .hero p { color: var(--text-secondary); font-size: 14px; line-height: 1.7; }
+    .hero-stats {
+      display: flex;
+      gap: 24px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat-number {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ===== LEGEND ===== */
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* ===== TABLE SECTION ===== */
+    .table-section {
+      margin-bottom: 40px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: border-color 0.2s ease;
+    }
+    .table-section:hover { border-color: var(--border-accent); }
+    .table-header {
+      padding: 20px 24px;
+      background: var(--bg-th);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .table-header-left { display: flex; flex-direction: column; gap: 4px; }
+    .table-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .table-name-icon { font-size: 16px; }
+    .table-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+    .table-col-count {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ===== DATA TABLE ===== */
+    .data-table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead tr {
+      background: var(--bg-th);
+      border-bottom: 1px solid var(--border);
+    }
+    thead th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s ease;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-card-hover); }
+    td {
+      padding: 11px 16px;
+      vertical-align: top;
+      color: var(--text-primary);
+    }
+    td.col-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+    td.col-type {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: var(--tag-fk);
+      white-space: nowrap;
+    }
+    td.col-desc { color: var(--text-secondary); line-height: 1.5; }
+    td.col-flags { white-space: nowrap; }
+
+    /* ===== TAGS ===== */
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 5px;
+      line-height: 1.5;
+      margin-right: 3px;
+      margin-bottom: 2px;
+      letter-spacing: 0.04em;
+    }
+    .tag-pk { background: var(--tag-pk-bg); color: var(--tag-pk); border: 1px solid rgba(63,185,80,0.25); }
+    .tag-nn { background: var(--tag-nn-bg); color: var(--tag-nn); border: 1px solid rgba(248,81,73,0.25); }
+    .tag-null { background: var(--tag-null-bg); color: var(--tag-null); border: 1px solid rgba(139,148,158,0.2); }
+    .tag-idx { background: var(--tag-idx-bg); color: var(--tag-idx); border: 1px solid rgba(88,166,255,0.25); }
+    .tag-def { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-border); }
+
+    /* ===== INDEX INFO ===== */
+    .index-section {
+      padding: 12px 20px;
+      border-top: 1px dashed var(--border);
+      background: var(--bg-base);
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .index-section span { font-family: 'JetBrains Mono', monospace; color: var(--tag-idx); }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      margin-top: 48px;
+      padding: 24px 32px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ===== SEARCH HIGHLIGHT ===== */
+    .highlight { background: rgba(255,220,0,0.25); border-radius: 2px; }
+
+    /* ===== HIDDEN ===== */
+    .hidden { display: none !important; }
+
+    /* ===== BACK TO TOP ===== */
+    #back-top {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(88,166,255,0.4);
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 200;
+    }
+    #back-top.show { opacity: 1; transform: translateY(0); }
+    #back-top:hover { transform: translateY(-2px); }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { padding: 16px; }
+      header { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="badge">Data Dictionary</div>
+      <h1>DCCE Backend</h1>
+      <p>PostgreSQL · 13 Tables</p>
+    </div>
+    <div class="sidebar-search">
+      <input type="text" id="sidebar-search-input" placeholder="🔍  ค้นหาตาราง..." autocomplete="off" />
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav">
+
+      <div class="nav-group-label">Auth &amp; Users</div>
+      <a class="nav-link" href="#users"><span class="dot"></span> users <span class="nav-count">19</span></a>
+
+      <div class="nav-group-label">Roles &amp; Permissions</div>
+      <a class="nav-link" href="#roles"><span class="dot"></span> roles <span class="nav-count">6</span></a>
+      <a class="nav-link" href="#user_roles"><span class="dot"></span> user_roles <span class="nav-count">2</span></a>
+      <a class="nav-link" href="#permission_groups"><span class="dot"></span> permission_groups <span class="nav-count">6</span></a>
+      <a class="nav-link" href="#permissions"><span class="dot"></span> permissions <span class="nav-count">5</span></a>
+      <a class="nav-link" href="#role_permissions"><span class="dot"></span> role_permissions <span class="nav-count">2</span></a>
+      <a class="nav-link" href="#user_permissions"><span class="dot"></span> user_permissions <span class="nav-count">7</span></a>
+
+      <div class="nav-group-label">Organizations</div>
+      <a class="nav-link" href="#organizations"><span class="dot"></span> organizations <span class="nav-count">14</span></a>
+      <a class="nav-link" href="#user_organizations"><span class="dot"></span> user_organizations <span class="nav-count">3</span></a>
+      <a class="nav-link" href="#organization_permissions"><span class="dot"></span> organization_permissions <span class="nav-count">2</span></a>
+
+      <div class="nav-group-label">Content</div>
+      <a class="nav-link" href="#banners"><span class="dot"></span> banners <span class="nav-count">12</span></a>
+      <a class="nav-link" href="#uploads"><span class="dot"></span> uploads <span class="nav-count">14</span></a>
+
+      <div class="nav-group-label">Logs</div>
+      <a class="nav-link" href="#audit_logs"><span class="dot"></span> audit_logs <span class="nav-count">11</span></a>
+
+    </nav>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main" id="main-content">
+
+    <!-- Header -->
+    <header>
+      <div>
+        <div class="header-title">📘 DCCE Backend — Data Dictionary</div>
+        <div class="header-subtitle">โครงสร้างฐานข้อมูล PostgreSQL</div>
+      </div>
+      <div class="header-right">
+        <span class="table-count-badge">13 Tables</span>
+        <label class="theme-toggle" for="theme-toggle-check" title="Toggle Dark/Light mode">
+          <span class="theme-icon" id="theme-icon-left">🌙</span>
+          <div class="toggle-switch" id="toggle-switch">
+            <div class="toggle-knob" id="toggle-knob"></div>
+          </div>
+          <span class="theme-icon" id="theme-icon-right">☀️</span>
+        </label>
+      </div>
+    </header>
+
+    <div class="content" id="content">
+
+      <!-- Hero -->
+      <div class="hero">
+        <h2>📋 Data Dictionary</h2>
+        <p>
+          เอกสารอ้างอิงโครงสร้างตารางทั้งหมดในระบบ DCCE Backend (PostgreSQL)<br/>
+          ครอบคลุม Authentication, RBAC, Organization, Content Management และ Audit Logging
+        </p>
+        <div class="hero-stats">
+          <div class="stat-item"><span class="stat-number">13</span><span class="stat-label">Tables</span></div>
+          <div class="stat-item"><span class="stat-number">107</span><span class="stat-label">Columns</span></div>
+          <div class="stat-item"><span class="stat-number">6</span><span class="stat-label">SQL Files</span></div>
+          <div class="stat-item"><span class="stat-number">PostgreSQL</span><span class="stat-label">Database</span></div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <span class="legend-item"><span class="tag tag-pk">PK</span> Primary Key</span>
+        <span class="legend-item"><span class="tag tag-nn">NOT NULL</span> ต้องมีค่า</span>
+        <span class="legend-item"><span class="tag tag-null">NULLABLE</span> ไม่บังคับ</span>
+        <span class="legend-item"><span class="tag tag-def">DEFAULT</span> มีค่าเริ่มต้น</span>
+        <span class="legend-item"><span class="tag tag-idx">IDX</span> มี Index</span>
+      </div>
+
+      <!-- ========================================
+           TABLE: users
+           ======================================== -->
+      <div class="table-section" id="users">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">👤</span> users</div>
+            <div class="table-desc">ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ</div>
+          </div>
+          <span class="table-col-count">19 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">user_id</td><td class="col-type">SERIAL</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ลำดับที่ของผู้ใช้งานในระบบ (Auto Increment)</td></tr>
+              <tr><td>2</td><td class="col-name">sso_userid</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">รหัส Unique ID จากระบบ SSO</td></tr>
+              <tr><td>3</td><td class="col-name">sso_username</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อผู้ใช้งาน (Username) จาก SSO</td></tr>
+              <tr><td>4</td><td class="col-name">sso_token</td><td class="col-type">TEXT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">Access Token ล่าสุดจาก SSO</td></tr>
+              <tr><td>5</td><td class="col-name">sso_idcard_no</td><td class="col-type">VARCHAR(20)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">เลขบัตรประจำตัวประชาชน</td></tr>
+              <tr><td>6</td><td class="col-name">sso_email</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">อีเมลผู้ใช้งาน</td></tr>
+              <tr><td>7</td><td class="col-name">sso_prefix_name</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">คำนำหน้าชื่อ (นาย, นาง, นางสาว)</td></tr>
+              <tr><td>8</td><td class="col-name">sso_firstname</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อจริง จาก SSO</td></tr>
+              <tr><td>9</td><td class="col-name">sso_lastname</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">นามสกุล จาก SSO</td></tr>
+              <tr><td>10</td><td class="col-name">sso_work_position_text</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อตำแหน่งงาน (ข้อความ) จาก SSO</td></tr>
+              <tr><td>11</td><td class="col-name">sso_work_place_text</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อสถานที่ทำงาน (ข้อความรวม)</td></tr>
+              <tr><td>12</td><td class="col-name">sso_work_place_id</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">รหัสสถานที่ทำงาน</td></tr>
+              <tr><td>13</td><td class="col-name">sso_work_place_name</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อสถานที่ทำงาน (กรม/สำนัก)</td></tr>
+              <tr><td>14</td><td class="col-name">sso_division_name</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อกอง/ส่วน จาก SSO</td></tr>
+              <tr><td>15</td><td class="col-name">sso_sub_division_name</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อฝ่าย/กลุ่มงานย่อย จาก SSO</td></tr>
+              <tr><td>16</td><td class="col-name">full_name</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อ-นามสกุลเต็ม สำหรับแสดงผลในระบบ</td></tr>
+              <tr><td>17</td><td class="col-name">is_active</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span></td><td class="col-desc">สถานะการเปิดใช้งาน (1 = ปกติ, 0 = ระงับ)</td></tr>
+              <tr><td>18</td><td class="col-name">permission_status</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span></td><td class="col-desc">สถานะสิทธิ์การใช้งาน (1 = เปิด, 0 = ปิด, 2 = บล็อก)</td></tr>
+              <tr><td>19</td><td class="col-name">permission_remark</td><td class="col-type">TEXT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">หมายเหตุการบล็อกหรือปิดการใช้งาน</td></tr>
+              <tr><td>20</td><td class="col-name">last_login</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">วันเวลาที่เข้าสู่ระบบครั้งล่าสุด</td></tr>
+              <tr><td>21</td><td class="col-name">created_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่สร้าง record</td></tr>
+              <tr><td>22</td><td class="col-name">updated_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่อัปเดตล่าสุด</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="index-section">🗂 Indexes: <span>idx_users_sso_userid</span> ON <span>(sso_userid)</span></div>
+      </div>
+
+      <!-- ========================================
+           TABLE: roles
+           ======================================== -->
+      <div class="table-section" id="roles">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">🎭</span> roles</div>
+            <div class="table-desc">ตารางนิยามตำแหน่งหรือบทบาทการทำงาน เช่น ADMIN, EDITOR, VIEWER</div>
+          </div>
+          <span class="table-col-count">6 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">role_id</td><td class="col-type">SERIAL</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">รหัส ID ของบทบาท (Auto Increment)</td></tr>
+              <tr><td>2</td><td class="col-name">role_name</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ชื่อบทบาท (ภาษาอังกฤษตัวพิมพ์ใหญ่ เช่น ADMIN, EDITOR, VIEWER) ต้องไม่ซ้ำกัน</td></tr>
+              <tr><td>3</td><td class="col-name">description</td><td class="col-type">TEXT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">รายละเอียดขอบเขตและหน้าที่ของบทบาทนี้</td></tr>
+              <tr><td>4</td><td class="col-name">is_active</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span></td><td class="col-desc">สถานะการใช้งาน (1 = ปกติ, 0 = ลบแบบ Soft Delete)</td></tr>
+              <tr><td>5</td><td class="col-name">created_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่สร้าง record</td></tr>
+              <tr><td>6</td><td class="col-name">updated_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่อัปเดตล่าสุด</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="index-section">🌱 Seed Data: <span>ADMIN</span>, <span>EDITOR</span>, <span>VIEWER</span></div>
+      </div>
+
+      <!-- ========================================
+           TABLE: user_roles
+           ======================================== -->
+      <div class="table-section" id="user_roles">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">🔗</span> user_roles</div>
+            <div class="table-desc">ตารางจับคู่ผู้ใช้งานกับบทบาท (Many-to-Many: 1 user มีได้หลาย role)</div>
+          </div>
+          <span class="table-col-count">2 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">user_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของผู้ใช้งาน (อ้างอิง users.user_id)</td></tr>
+              <tr><td>2</td><td class="col-name">role_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของบทบาท (อ้างอิง roles.role_id) — Composite PK กับ user_id</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========================================
+           TABLE: permission_groups
+           ======================================== -->
+      <div class="table-section" id="permission_groups">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">📁</span> permission_groups</div>
+            <div class="table-desc">ตารางกลุ่มของสิทธิ์การใช้งาน รองรับโครงสร้างแบบ Tree (parent_id)</div>
+          </div>
+          <span class="table-col-count">6 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">group_id</td><td class="col-type">SERIAL</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">รหัสกลุ่มสิทธิ์ (Auto Increment)</td></tr>
+              <tr><td>2</td><td class="col-name">group_name</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ชื่อกลุ่มสิทธิ์ (เช่น ระบบสมาชิก, รายงาน) ต้องไม่ซ้ำกัน</td></tr>
+              <tr><td>3</td><td class="col-name">parent_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ID ของกลุ่มแม่ (ถ้ามี) สำหรับทำโครงสร้างแบบ Tree</td></tr>
+              <tr><td>4</td><td class="col-name">sort_order</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-def">DEFAULT 0</span></td><td class="col-desc">ลำดับการแสดงผลของกลุ่มสิทธิ์</td></tr>
+              <tr><td>5</td><td class="col-name">is_active</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span></td><td class="col-desc">สถานะการใช้งาน (1 = ใช้งาน, 0 = ปิดใช้งาน)</td></tr>
+              <tr><td>6</td><td class="col-name">created_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่สร้าง</td></tr>
+              <tr><td>7</td><td class="col-name">updated_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่อัปเดตล่าสุด</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========================================
+           TABLE: permissions
+           ======================================== -->
+      <div class="table-section" id="permissions">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">🔑</span> permissions</div>
+            <div class="table-desc">ตารางนิยามสิทธิ์การเข้าถึงเมนูหรือฟังก์ชัน (กุญแจสิทธิ์) เช่น user.view, banner.edit</div>
+          </div>
+          <span class="table-col-count">5 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">permission_id</td><td class="col-type">SERIAL</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">รหัสสิทธิ์ (Auto Increment)</td></tr>
+              <tr><td>2</td><td class="col-name">p_key</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">รหัสสิทธิ์แบบ key (เช่น user.view, banner.edit) ต้องไม่ซ้ำกัน</td></tr>
+              <tr><td>3</td><td class="col-name">p_label</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อเรียกสิทธิ์ที่เข้าใจง่าย สำหรับแสดงผลในหน้าจอ</td></tr>
+              <tr><td>4</td><td class="col-name">group_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ID ของกลุ่มสิทธิ์ (อ้างอิง permission_groups.group_id)</td></tr>
+              <tr><td>5</td><td class="col-name">is_active</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span></td><td class="col-desc">สถานะการใช้งาน (1 = ใช้งาน, 0 = ปิดใช้งาน)</td></tr>
+              <tr><td>6</td><td class="col-name">created_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่สร้าง</td></tr>
+              <tr><td>7</td><td class="col-name">updated_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่อัปเดตล่าสุด</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========================================
+           TABLE: role_permissions
+           ======================================== -->
+      <div class="table-section" id="role_permissions">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">🔗</span> role_permissions</div>
+            <div class="table-desc">ตารางจับคู่บทบาทกับสิทธิ์ย่อย (Many-to-Many: 1 role มีได้หลาย permission)</div>
+          </div>
+          <span class="table-col-count">2 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">role_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของบทบาท (อ้างอิง roles.role_id)</td></tr>
+              <tr><td>2</td><td class="col-name">permission_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของสิทธิ์ (อ้างอิง permissions.permission_id) — Composite PK กับ role_id</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========================================
+           TABLE: user_permissions
+           ======================================== -->
+      <div class="table-section" id="user_permissions">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">⚡</span> user_permissions</div>
+            <div class="table-desc">ตารางให้สิทธิ์พิเศษรายบุคคล (Override) อิงตามหน่วยงาน — สามารถ Allow หรือ Deny ได้</div>
+          </div>
+          <span class="table-col-count">7 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">user_permissions_id</td><td class="col-type">SERIAL</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">รหัส ID ของสิทธิ์พิเศษรายบุคคล (Auto Increment)</td></tr>
+              <tr><td>2</td><td class="col-name">user_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของผู้ใช้งาน (อ้างอิง users.user_id)</td></tr>
+              <tr><td>3</td><td class="col-name">org_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ID ของหน่วยงาน — ถ้า NULL หมายถึงสิทธิ์ Global ไม่จำกัดหน่วยงาน</td></tr>
+              <tr><td>4</td><td class="col-name">permission_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของสิทธิ์ย่อย (อ้างอิง permissions.permission_id)</td></tr>
+              <tr><td>5</td><td class="col-name">is_deny</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 0</span></td><td class="col-desc">สถานะสั่งห้าม (1 = ห้ามเข้าถึงแม้ Role/Org จะอนุญาต, 0 = อนุญาต)</td></tr>
+              <tr><td>6</td><td class="col-name">expired_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">วันหมดอายุของสิทธิ์พิเศษ — ถ้า NULL หมายถึงไม่มีวันหมดอายุ</td></tr>
+              <tr><td>7</td><td class="col-name">remark</td><td class="col-type">TEXT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">หมายเหตุการให้หรือระงับสิทธิ์</td></tr>
+              <tr><td>8</td><td class="col-name">created_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่บันทึก</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="index-section">🔒 Unique Constraint: <span>unique_user_org_permission</span> ON <span>(user_id, org_id, permission_id)</span></div>
+      </div>
+
+      <!-- ========================================
+           TABLE: organizations
+           ======================================== -->
+      <div class="table-section" id="organizations">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">🏢</span> organizations</div>
+            <div class="table-desc">ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical) — สาขา, กรม, กอง, ฝ่าย</div>
+          </div>
+          <span class="table-col-count">14 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">org_id</td><td class="col-type">SERIAL</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">รหัสหน่วยงาน (Auto Increment)</td></tr>
+              <tr><td>2</td><td class="col-name">org_name</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ชื่อหน่วยงาน (เช่น สาขาระยอง, กรม C)</td></tr>
+              <tr><td>3</td><td class="col-name">parent_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">ID ของหน่วยงานแม่ข่าย — NULL = หน่วยงานระดับสูงสุด (root)</td></tr>
+              <tr><td>4</td><td class="col-name">sort_order</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-def">DEFAULT 0</span></td><td class="col-desc">ลำดับการแสดงผลในหน้าจอ</td></tr>
+              <tr><td>5</td><td class="col-name">level</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span></td><td class="col-desc">ระดับความลึก (1 = สาขาหลัก, 2 = กอง/กรมย่อย, 3 = ฝ่าย/กลุ่มงาน)</td></tr>
+              <tr><td>6</td><td class="col-name">is_active</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">สถานะการใช้งาน (1 = เปิด, 0 = ปิด/Soft Delete)</td></tr>
+              <tr><td>7</td><td class="col-name">permission_is_active</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span></td><td class="col-desc">สถานะการใช้งานสิทธิ์ของหน่วยงานนี้ (1 = เปิด, 0 = ปิดชั่วคราว)</td></tr>
+              <tr><td>8</td><td class="col-name">permission_remark</td><td class="col-type">TEXT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">หมายเหตุเกี่ยวกับการตั้งค่าสิทธิ์ของหน่วยงานนี้</td></tr>
+              <tr><td>9</td><td class="col-name">unit_data_permissions</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ระดับการเข้าถึงข้อมูล (1=เฉพาะหน่วยงานตัวเอง, 2=ระดับกรม, 3=ระดับประเทศ)</td></tr>
+              <tr><td>10</td><td class="col-name">unit_view_climate_index</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">สิทธิ์ดูข้อมูลดัชนีภูมิอากาศ (1 = มีสิทธิ์, 0 = ไม่มีสิทธิ์)</td></tr>
+              <tr><td>11</td><td class="col-name">unit_view_ghg_emissions</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">สิทธิ์ดูข้อมูลการปล่อยก๊าซเรือนกระจก (1 = มีสิทธิ์, 0 = ไม่มีสิทธิ์)</td></tr>
+              <tr><td>12</td><td class="col-name">unit_edit_historical_data</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">สิทธิ์แก้ไขข้อมูลย้อนหลัง (1 = มีสิทธิ์, 0 = ไม่มีสิทธิ์)</td></tr>
+              <tr><td>13</td><td class="col-name">unit_approve_public_data</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">สิทธิ์อนุมัติการเผยแพร่ข้อมูลสาธารณะ (1 = มีสิทธิ์, 0 = ไม่มีสิทธิ์)</td></tr>
+              <tr><td>14</td><td class="col-name">unit_remark</td><td class="col-type">TEXT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">หมายเหตุของหน่วยงานย่อย (ถ้ามี)</td></tr>
+              <tr><td>15</td><td class="col-name">created_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่สร้าง</td></tr>
+              <tr><td>16</td><td class="col-name">updated_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่อัปเดตล่าสุด</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="index-section">🗂 Indexes: <span>idx_organizations_parent_id</span> ON <span>(parent_id)</span> &nbsp;|&nbsp; <span>idx_organizations_is_active</span> ON <span>(is_active)</span></div>
+      </div>
+
+      <!-- ========================================
+           TABLE: user_organizations
+           ======================================== -->
+      <div class="table-section" id="user_organizations">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">🔗</span> user_organizations</div>
+            <div class="table-desc">ตารางจับคู่ผู้ใช้งานกับหน่วยงาน — รองรับกรณี 1 คนสังกัดหลายกรม/สาขา</div>
+          </div>
+          <span class="table-col-count">3 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">user_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของผู้ใช้งาน (อ้างอิง users.user_id)</td></tr>
+              <tr><td>2</td><td class="col-name">org_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของหน่วยงาน (อ้างอิง organizations.org_id) — Composite PK กับ user_id</td></tr>
+              <tr><td>3</td><td class="col-name">is_primary</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 0</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">สถานะสังกัดหลัก (1 = สังกัดหลัก, 0 = สิทธิ์เข้าถึงเพิ่มเติม)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="index-section">🗂 Index: <span>idx_user_organizations_is_primary</span> ON <span>(is_primary)</span></div>
+      </div>
+
+      <!-- ========================================
+           TABLE: organization_permissions
+           ======================================== -->
+      <div class="table-section" id="organization_permissions">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">🔗</span> organization_permissions</div>
+            <div class="table-desc">ตารางจับคู่หน่วยงาน/สาขากับสิทธิ์การใช้งาน (แทนที่ role_permissions สำหรับระบบนี้)</div>
+          </div>
+          <span class="table-col-count">2 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">org_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของหน่วยงานหรือสาขา (อ้างอิง organizations.org_id)</td></tr>
+              <tr><td>2</td><td class="col-name">permission_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ID ของสิทธิ์ย่อย (อ้างอิง permissions.permission_id) — Composite PK กับ org_id</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========================================
+           TABLE: banners
+           ======================================== -->
+      <div class="table-section" id="banners">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">🖼️</span> banners</div>
+            <div class="table-desc">ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage — รองรับ Soft Delete และ 2 ภาษา</div>
+          </div>
+          <span class="table-col-count">12 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">id</td><td class="col-type">SERIAL</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">รหัสแบนเนอร์ Primary Key (Auto Increment)</td></tr>
+              <tr><td>2</td><td class="col-name">title_th</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ชื่อ/หัวข้อแบนเนอร์ ภาษาไทย</td></tr>
+              <tr><td>3</td><td class="col-name">title_en</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ชื่อ/หัวข้อแบนเนอร์ ภาษาอังกฤษ</td></tr>
+              <tr><td>4</td><td class="col-name">link_url</td><td class="col-type">VARCHAR(1000)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ลิงก์เป้าหมายเมื่อผู้ใช้คลิกแบนเนอร์</td></tr>
+              <tr><td>5</td><td class="col-name">start_date</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">วันที่เริ่มต้นแสดงผลแบนเนอร์</td></tr>
+              <tr><td>6</td><td class="col-name">end_date</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">วันที่สิ้นสุดแสดงผล — NULL = แสดงตลอดไป (ใช้คู่กับ is_never_ends)</td></tr>
+              <tr><td>7</td><td class="col-name">is_never_ends</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 0</span></td><td class="col-desc">1 = ไม่มีวันหมดอายุ (จนกว่าจะปิดเอง), 0 = มีวันหมดอายุ</td></tr>
+              <tr><td>8</td><td class="col-name">sort_order</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">ลำดับการแสดงผลของแบนเนอร์</td></tr>
+              <tr><td>9</td><td class="col-name">is_active</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">สถานะ (1 = เปิดใช้งาน, 0 = ปิดใช้งาน)</td></tr>
+              <tr><td>10</td><td class="col-name">created_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่สร้าง</td></tr>
+              <tr><td>11</td><td class="col-name">created_by</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อผู้สร้างแบนเนอร์</td></tr>
+              <tr><td>12</td><td class="col-name">updated_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span></td><td class="col-desc">วันเวลาที่แก้ไขล่าสุด</td></tr>
+              <tr><td>13</td><td class="col-name">updated_by</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อผู้แก้ไขล่าสุด</td></tr>
+              <tr><td>14</td><td class="col-name">deleted_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">วันเวลาที่ลบ (Soft Delete)</td></tr>
+              <tr><td>15</td><td class="col-name">deleted_by</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อผู้ลบ</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="index-section">🗂 Indexes: <span>idx_banners_active_date</span> ON <span>(is_active, start_date, end_date)</span> &nbsp;|&nbsp; <span>idx_banners_sort</span> ON <span>(sort_order)</span></div>
+      </div>
+
+      <!-- ========================================
+           TABLE: uploads
+           ======================================== -->
+      <div class="table-section" id="uploads">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">📎</span> uploads</div>
+            <div class="table-desc">ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท — รองรับการเชื่อมโยงกับตารางอื่น (ref_table/ref_id)</div>
+          </div>
+          <span class="table-col-count">14 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">id</td><td class="col-type">SERIAL</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">รหัสไฟล์ Primary Key (Auto Increment)</td></tr>
+              <tr><td>2</td><td class="col-name">original_name</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ชื่อไฟล์ต้นฉบับที่ผู้ใช้ส่งมา</td></tr>
+              <tr><td>3</td><td class="col-name">saved_name</td><td class="col-type">VARCHAR(255)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ชื่อไฟล์ที่บันทึกจริงในระบบ (มักเป็น UUID หรือ timestamp)</td></tr>
+              <tr><td>4</td><td class="col-name">path</td><td class="col-type">VARCHAR(2000)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">พาธไฟล์ที่บันทึก เช่น /uploads/banners/xxx.jpg</td></tr>
+              <tr><td>5</td><td class="col-name">mime_type</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ประเภทไฟล์ตามมาตรฐาน MIME เช่น image/jpeg, application/pdf</td></tr>
+              <tr><td>6</td><td class="col-name">size</td><td class="col-type">BIGINT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ขนาดไฟล์ หน่วยเป็น bytes</td></tr>
+              <tr><td>7</td><td class="col-name">extension</td><td class="col-type">VARCHAR(20)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">นามสกุลไฟล์ เช่น .jpg, .png, .pdf</td></tr>
+              <tr><td>8</td><td class="col-name">ref_table</td><td class="col-type">VARCHAR(50)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">ชื่อตารางที่ผูกไว้ เช่น users, banners, organizations</td></tr>
+              <tr><td>9</td><td class="col-name">ref_id</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">ID ของ record ที่ผูกไว้ เช่น user_id = 2</td></tr>
+              <tr><td>10</td><td class="col-name">tag</td><td class="col-type">VARCHAR(50)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ประเภทการใช้งานไฟล์ เช่น avatar, banner, document</td></tr>
+              <tr><td>11</td><td class="col-name">sort_order</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span></td><td class="col-desc">ลำดับการแสดงผลไฟล์ (กรณีมีหลายไฟล์ต่อ 1 record)</td></tr>
+              <tr><td>12</td><td class="col-name">is_temp</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">1 = ไฟล์ชั่วคราว (ยังไม่ผูก), 0 = ไฟล์จริง (ผูกกับ record แล้ว)</td></tr>
+              <tr><td>13</td><td class="col-name">is_active</td><td class="col-type">SMALLINT</td><td class="col-flags"><span class="tag tag-def">DEFAULT 1</span></td><td class="col-desc">สถานะการใช้งาน (1 = ใช้งาน, 0 = ปิดใช้งาน)</td></tr>
+              <tr><td>14</td><td class="col-name">created_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">วันเวลาที่อัปโหลด</td></tr>
+              <tr><td>15</td><td class="col-name">created_by</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อหรือ ID ผู้อัปโหลด</td></tr>
+              <tr><td>16</td><td class="col-name">deleted_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">วันเวลาที่ลบ (Soft Delete)</td></tr>
+              <tr><td>17</td><td class="col-name">deleted_by</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ชื่อผู้ที่ทำการลบไฟล์</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="index-section">🗂 Indexes: <span>idx_uploads_ref</span> ON <span>(ref_table, ref_id)</span> &nbsp;|&nbsp; <span>idx_uploads_temp_cleanup</span> ON <span>(is_temp, created_at)</span></div>
+      </div>
+
+      <!-- ========================================
+           TABLE: audit_logs
+           ======================================== -->
+      <div class="table-section" id="audit_logs">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="table-name"><span class="table-name-icon">📜</span> audit_logs</div>
+            <div class="table-desc">ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูลในระบบ</div>
+          </div>
+          <span class="table-col-count">11 columns</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Column Name</th><th>Data Type</th><th>Flags</th><th>คำอธิบาย</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td class="col-name">log_id</td><td class="col-type">SERIAL</td><td class="col-flags"><span class="tag tag-pk">PK</span><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">รหัส ID ของ Log แต่ละรายการ (Auto Increment)</td></tr>
+              <tr><td>2</td><td class="col-name">action_type</td><td class="col-type">VARCHAR(50)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span></td><td class="col-desc">ประเภทกิจกรรม เช่น CREATE, UPDATE, DELETE</td></tr>
+              <tr><td>3</td><td class="col-name">module_name</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-nn">NOT NULL</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">ชื่อโมดูลหรือตารางที่ถูกแก้ไข เช่น organizations, users</td></tr>
+              <tr><td>4</td><td class="col-name">record_id</td><td class="col-type">VARCHAR(100)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">ID ของ record ที่ถูกกระทำ เช่น org_id ของสาขาที่ถูกแก้ไข</td></tr>
+              <tr><td>5</td><td class="col-name">old_data</td><td class="col-type">JSONB</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ข้อมูลเดิมก่อนแก้ไข เก็บเป็น JSON เพื่อเปรียบเทียบย้อนหลัง</td></tr>
+              <tr><td>6</td><td class="col-name">new_data</td><td class="col-type">JSONB</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ข้อมูลใหม่หลังแก้ไข เก็บเป็น JSON</td></tr>
+              <tr><td>7</td><td class="col-name">remark</td><td class="col-type">TEXT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">หมายเหตุหรือเหตุผลการดำเนินการ (ส่งมาจากหน้าจอ)</td></tr>
+              <tr><td>8</td><td class="col-name">ip_address</td><td class="col-type">VARCHAR(45)</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">IP Address ของ Client ที่ทำรายการ (รองรับทั้ง IPv4 และ IPv6)</td></tr>
+              <tr><td>9</td><td class="col-name">user_agent</td><td class="col-type">TEXT</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ข้อมูล Browser / Device ของ Client</td></tr>
+              <tr><td>10</td><td class="col-name">created_by</td><td class="col-type">INTEGER</td><td class="col-flags"><span class="tag tag-null">NULLABLE</span></td><td class="col-desc">ID ของผู้ใช้งาน/แอดมินที่ทำรายการ (อ้างอิง users.user_id)</td></tr>
+              <tr><td>11</td><td class="col-name">created_at</td><td class="col-type">TIMESTAMP</td><td class="col-flags"><span class="tag tag-def">DEFAULT NOW()</span><span class="tag tag-idx">IDX</span></td><td class="col-desc">วันเวลาที่เกิดบันทึกกิจกรรม</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="index-section">🗂 Indexes: <span>idx_audit_logs_module_record</span> ON <span>(module_name, record_id)</span> &nbsp;|&nbsp; <span>idx_audit_logs_created_at</span> ON <span>(created_at)</span></div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        📘 DCCE Backend · Data Dictionary &nbsp;·&nbsp; PostgreSQL &nbsp;·&nbsp;
+        Generated: <span id="gen-date"></span>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div><!-- /layout -->
+
+<!-- Back to Top Button -->
+<button id="back-top" title="กลับด้านบน" aria-label="Back to top">↑</button>
+
+<script>
+  // ===== GENERATED DATE =====
+  document.getElementById('gen-date').textContent = new Date().toLocaleDateString('th-TH', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  // ===== THEME TOGGLE =====
+  const html = document.documentElement;
+  const toggleSwitch = document.getElementById('toggle-switch');
+
+  function setTheme(theme) {
+    html.setAttribute('data-theme', theme);
+    localStorage.setItem('dcce-dd-theme', theme);
+  }
+
+  // Load saved theme
+  const savedTheme = localStorage.getItem('dcce-dd-theme') || 'dark';
+  setTheme(savedTheme);
+
+  toggleSwitch.addEventListener('click', () => {
+    const current = html.getAttribute('data-theme');
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  // ===== ACTIVE NAV LINK =====
+  const navLinks = document.querySelectorAll('.nav-link');
+  const sections = document.querySelectorAll('.table-section');
+  const mainEl = document.getElementById('main-content');
+
+  function updateActiveNav() {
+    let current = '';
+    const scrollTop = mainEl.scrollTop + 120;
+    sections.forEach(section => {
+      if (section.offsetTop <= scrollTop) current = section.id;
+    });
+    navLinks.forEach(link => {
+      link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+    });
+  }
+
+  mainEl.addEventListener('scroll', () => {
+    updateActiveNav();
+    // Back to top button
+    document.getElementById('back-top').classList.toggle('show', mainEl.scrollTop > 300);
+  });
+
+  // Smooth scroll for nav links
+  navLinks.forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) {
+        mainEl.scrollTo({ top: target.offsetTop - 80, behavior: 'smooth' });
+      }
+    });
+  });
+
+  // Back to top
+  document.getElementById('back-top').addEventListener('click', () => {
+    mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ===== SIDEBAR SEARCH =====
+  const searchInput = document.getElementById('sidebar-search-input');
+  searchInput.addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    navLinks.forEach(link => {
+      const text = link.textContent.toLowerCase();
+      link.classList.toggle('hidden', q !== '' && !text.includes(q));
+    });
+    // Also hide group labels if all children hidden
+    document.querySelectorAll('.nav-group-label').forEach(label => {
+      let next = label.nextElementSibling;
+      let allHidden = true;
+      while (next && !next.classList.contains('nav-group-label')) {
+        if (!next.classList.contains('hidden')) allHidden = false;
+        next = next.nextElementSibling;
+      }
+      label.classList.toggle('hidden', q !== '' && allHidden);
+    });
+  });
+
+  updateActiveNav();
+</script>
+</body>
+</html>

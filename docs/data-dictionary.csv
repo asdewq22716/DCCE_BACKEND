@@ -1,0 +1,119 @@
+table_name,table_description,column_order,column_name,data_type,is_nullable,default_value,is_primary_key,has_index,description
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,1,user_id,SERIAL,NOT NULL,,PK,,ID ลำดับที่ของผู้ใช้งานในระบบ (Auto Increment)
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,2,sso_userid,VARCHAR(100),NULLABLE,,,,รหัส Unique ID จากระบบ SSO
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,3,sso_username,VARCHAR(100),NULLABLE,,,,ชื่อผู้ใช้งาน (Username) จาก SSO
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,4,sso_token,TEXT,NULLABLE,,,,Access Token ล่าสุดจาก SSO
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,5,sso_idcard_no,VARCHAR(20),NULLABLE,,,,เลขบัตรประจำตัวประชาชน
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,6,sso_email,VARCHAR(255),NULLABLE,,,,อีเมลผู้ใช้งาน
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,7,sso_prefix_name,VARCHAR(100),NULLABLE,,,,คำนำหน้าชื่อ (นาย นาง นางสาว)
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,8,sso_firstname,VARCHAR(100),NULLABLE,,,,ชื่อจริง จาก SSO
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,9,sso_lastname,VARCHAR(100),NULLABLE,,,,นามสกุล จาก SSO
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,10,sso_work_position_text,VARCHAR(255),NULLABLE,,,,ชื่อตำแหน่งงาน (ข้อความ) จาก SSO
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,11,sso_work_place_text,VARCHAR(255),NULLABLE,,,,ชื่อสถานที่ทำงาน (ข้อความรวม)
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,12,sso_work_place_id,VARCHAR(100),NULLABLE,,,,รหัสสถานที่ทำงาน
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,13,sso_work_place_name,VARCHAR(255),NULLABLE,,,,ชื่อสถานที่ทำงาน (กรม/สำนัก)
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,14,sso_division_name,VARCHAR(255),NULLABLE,,,,ชื่อกอง/ส่วน จาก SSO
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,15,sso_sub_division_name,VARCHAR(255),NULLABLE,,,,ชื่อฝ่าย/กลุ่มงานย่อย จาก SSO
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,16,full_name,VARCHAR(255),NULLABLE,,,,ชื่อ-นามสกุลเต็ม สำหรับแสดงผลในระบบ
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,17,is_active,SMALLINT,NOT NULL,1,,,สถานะการเปิดใช้งาน (1=ปกติ 0=ระงับ)
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,18,permission_status,SMALLINT,NOT NULL,1,,,สถานะสิทธิ์ (1=เปิด 0=ปิด 2=บล็อก)
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,19,permission_remark,TEXT,NULLABLE,,,,หมายเหตุการบล็อกหรือปิดการใช้งาน
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,20,last_login,TIMESTAMP,NULLABLE,,,,วันเวลาที่เข้าสู่ระบบครั้งล่าสุด
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,21,created_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่สร้าง record
+users,ข้อมูลผู้ใช้งานที่ Sync มาจาก SSO และข้อมูลท้องถิ่นในระบบ,22,updated_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่อัปเดตล่าสุด
+roles,ตารางนิยามตำแหน่งหรือบทบาทการทำงาน เช่น ADMIN EDITOR VIEWER,1,role_id,SERIAL,NOT NULL,,PK,,รหัส ID ของบทบาท (Auto Increment)
+roles,ตารางนิยามตำแหน่งหรือบทบาทการทำงาน เช่น ADMIN EDITOR VIEWER,2,role_name,VARCHAR(100),NOT NULL,,,,ชื่อบทบาท (ภาษาอังกฤษตัวพิมพ์ใหญ่ เช่น ADMIN EDITOR VIEWER) ต้องไม่ซ้ำกัน
+roles,ตารางนิยามตำแหน่งหรือบทบาทการทำงาน เช่น ADMIN EDITOR VIEWER,3,description,TEXT,NULLABLE,,,,รายละเอียดขอบเขตและหน้าที่ของบทบาทนี้
+roles,ตารางนิยามตำแหน่งหรือบทบาทการทำงาน เช่น ADMIN EDITOR VIEWER,4,is_active,SMALLINT,NOT NULL,1,,,สถานะการใช้งาน (1=ปกติ 0=ลบแบบ Soft Delete)
+roles,ตารางนิยามตำแหน่งหรือบทบาทการทำงาน เช่น ADMIN EDITOR VIEWER,5,created_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่สร้าง
+roles,ตารางนิยามตำแหน่งหรือบทบาทการทำงาน เช่น ADMIN EDITOR VIEWER,6,updated_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่อัปเดตล่าสุด
+user_roles,ตารางจับคู่ผู้ใช้งานกับบทบาท (Many-to-Many),1,user_id,INTEGER,NOT NULL,,PK (Composite),,ID ของผู้ใช้งาน (อ้างอิง users.user_id)
+user_roles,ตารางจับคู่ผู้ใช้งานกับบทบาท (Many-to-Many),2,role_id,INTEGER,NOT NULL,,PK (Composite),,ID ของบทบาท (อ้างอิง roles.role_id)
+permission_groups,ตารางกลุ่มของสิทธิ์การใช้งาน รองรับโครงสร้างแบบ Tree,1,group_id,SERIAL,NOT NULL,,PK,,รหัสกลุ่มสิทธิ์ (Auto Increment)
+permission_groups,ตารางกลุ่มของสิทธิ์การใช้งาน รองรับโครงสร้างแบบ Tree,2,group_name,VARCHAR(100),NOT NULL,,,,ชื่อกลุ่มสิทธิ์ (เช่น ระบบสมาชิก รายงาน) ต้องไม่ซ้ำกัน
+permission_groups,ตารางกลุ่มของสิทธิ์การใช้งาน รองรับโครงสร้างแบบ Tree,3,parent_id,INTEGER,NULLABLE,,,,ID ของกลุ่มแม่ (ถ้ามี) สำหรับทำโครงสร้างแบบ Tree
+permission_groups,ตารางกลุ่มของสิทธิ์การใช้งาน รองรับโครงสร้างแบบ Tree,4,sort_order,INTEGER,NOT NULL,0,,,ลำดับการแสดงผลของกลุ่มสิทธิ์
+permission_groups,ตารางกลุ่มของสิทธิ์การใช้งาน รองรับโครงสร้างแบบ Tree,5,is_active,SMALLINT,NOT NULL,1,,,สถานะการใช้งาน (1=ใช้งาน 0=ปิด)
+permission_groups,ตารางกลุ่มของสิทธิ์การใช้งาน รองรับโครงสร้างแบบ Tree,6,created_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่สร้าง
+permission_groups,ตารางกลุ่มของสิทธิ์การใช้งาน รองรับโครงสร้างแบบ Tree,7,updated_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่อัปเดตล่าสุด
+permissions,ตารางนิยามสิทธิ์การเข้าถึงเมนูหรือฟังก์ชัน (กุญแจสิทธิ์),1,permission_id,SERIAL,NOT NULL,,PK,,รหัสสิทธิ์ (Auto Increment)
+permissions,ตารางนิยามสิทธิ์การเข้าถึงเมนูหรือฟังก์ชัน (กุญแจสิทธิ์),2,p_key,VARCHAR(100),NOT NULL,,,,รหัสสิทธิ์แบบ key เช่น user.view / banner.edit ต้องไม่ซ้ำกัน
+permissions,ตารางนิยามสิทธิ์การเข้าถึงเมนูหรือฟังก์ชัน (กุญแจสิทธิ์),3,p_label,VARCHAR(255),NULLABLE,,,,ชื่อเรียกสิทธิ์ที่เข้าใจง่าย สำหรับแสดงผลในหน้าจอ
+permissions,ตารางนิยามสิทธิ์การเข้าถึงเมนูหรือฟังก์ชัน (กุญแจสิทธิ์),4,group_id,INTEGER,NULLABLE,,,,ID ของกลุ่มสิทธิ์ (อ้างอิง permission_groups.group_id)
+permissions,ตารางนิยามสิทธิ์การเข้าถึงเมนูหรือฟังก์ชัน (กุญแจสิทธิ์),5,is_active,SMALLINT,NOT NULL,1,,,สถานะการใช้งาน (1=ใช้งาน 0=ปิด)
+permissions,ตารางนิยามสิทธิ์การเข้าถึงเมนูหรือฟังก์ชัน (กุญแจสิทธิ์),6,created_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่สร้าง
+permissions,ตารางนิยามสิทธิ์การเข้าถึงเมนูหรือฟังก์ชัน (กุญแจสิทธิ์),7,updated_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่อัปเดตล่าสุด
+role_permissions,ตารางจับคู่บทบาทกับสิทธิ์ย่อย (Many-to-Many),1,role_id,INTEGER,NOT NULL,,PK (Composite),,ID ของบทบาท (อ้างอิง roles.role_id)
+role_permissions,ตารางจับคู่บทบาทกับสิทธิ์ย่อย (Many-to-Many),2,permission_id,INTEGER,NOT NULL,,PK (Composite),,ID ของสิทธิ์ (อ้างอิง permissions.permission_id)
+user_permissions,ตารางให้สิทธิ์พิเศษรายบุคคล Override อิงตามหน่วยงาน,1,user_permissions_id,SERIAL,NOT NULL,,PK,,รหัส ID ของสิทธิ์พิเศษรายบุคคล (Auto Increment)
+user_permissions,ตารางให้สิทธิ์พิเศษรายบุคคล Override อิงตามหน่วยงาน,2,user_id,INTEGER,NOT NULL,,,,ID ของผู้ใช้งาน (อ้างอิง users.user_id)
+user_permissions,ตารางให้สิทธิ์พิเศษรายบุคคล Override อิงตามหน่วยงาน,3,org_id,INTEGER,NULLABLE,,,,ID ของหน่วยงาน — NULL = สิทธิ์ Global ไม่จำกัดหน่วยงาน
+user_permissions,ตารางให้สิทธิ์พิเศษรายบุคคล Override อิงตามหน่วยงาน,4,permission_id,INTEGER,NOT NULL,,,,ID ของสิทธิ์ย่อย (อ้างอิง permissions.permission_id)
+user_permissions,ตารางให้สิทธิ์พิเศษรายบุคคล Override อิงตามหน่วยงาน,5,is_deny,SMALLINT,NOT NULL,0,,,1=ห้ามเข้าถึงแม้ Role/Org จะอนุญาต 0=อนุญาต
+user_permissions,ตารางให้สิทธิ์พิเศษรายบุคคล Override อิงตามหน่วยงาน,6,expired_at,TIMESTAMP,NULLABLE,,,,วันหมดอายุของสิทธิ์พิเศษ — NULL = ไม่มีวันหมดอายุ
+user_permissions,ตารางให้สิทธิ์พิเศษรายบุคคล Override อิงตามหน่วยงาน,7,remark,TEXT,NULLABLE,,,,หมายเหตุการให้หรือระงับสิทธิ์
+user_permissions,ตารางให้สิทธิ์พิเศษรายบุคคล Override อิงตามหน่วยงาน,8,created_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่บันทึก
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),1,org_id,SERIAL,NOT NULL,,PK,,รหัสหน่วยงาน (Auto Increment)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),2,org_name,VARCHAR(255),NOT NULL,,,,ชื่อหน่วยงาน เช่น สาขาระยอง กรม C
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),3,parent_id,INTEGER,NULLABLE,,,IDX,ID ของหน่วยงานแม่ข่าย — NULL = หน่วยงานระดับสูงสุด (root)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),4,sort_order,INTEGER,NOT NULL,0,,,ลำดับการแสดงผลในหน้าจอ
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),5,level,INTEGER,NOT NULL,1,,,ระดับความลึก (1=สาขาหลัก 2=กอง/กรมย่อย 3=ฝ่าย/กลุ่มงาน)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),6,is_active,SMALLINT,NOT NULL,1,,IDX,สถานะการใช้งาน (1=เปิด 0=ปิด/Soft Delete)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),7,permission_is_active,SMALLINT,NOT NULL,1,,,สถานะสิทธิ์ของหน่วยงาน (1=เปิด 0=ปิดชั่วคราว)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),8,permission_remark,TEXT,NULLABLE,,,,หมายเหตุเกี่ยวกับการตั้งค่าสิทธิ์ของหน่วยงานนี้
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),9,unit_data_permissions,INTEGER,NULLABLE,,,,ระดับการเข้าถึงข้อมูล (1=เฉพาะหน่วยงานตนเอง 2=ระดับกรม 3=ระดับประเทศ)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),10,unit_view_climate_index,SMALLINT,NULLABLE,,,,สิทธิ์ดูดัชนีภูมิอากาศ (1=มีสิทธิ์ 0=ไม่มี)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),11,unit_view_ghg_emissions,SMALLINT,NULLABLE,,,,สิทธิ์ดูข้อมูลการปล่อยก๊าซเรือนกระจก (1=มีสิทธิ์ 0=ไม่มี)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),12,unit_edit_historical_data,SMALLINT,NULLABLE,,,,สิทธิ์แก้ไขข้อมูลย้อนหลัง (1=มีสิทธิ์ 0=ไม่มี)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),13,unit_approve_public_data,SMALLINT,NULLABLE,,,,สิทธิ์อนุมัติการเผยแพร่ข้อมูลสาธารณะ (1=มีสิทธิ์ 0=ไม่มี)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),14,unit_remark,TEXT,NULLABLE,,,,หมายเหตุของหน่วยงานย่อย (ถ้ามี)
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),15,created_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่สร้าง
+organizations,ตารางเก็บโครงสร้างองค์กรแบบลำดับชั้น (Hierarchical),16,updated_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่อัปเดตล่าสุด
+user_organizations,ตารางจับคู่ผู้ใช้งานกับหน่วยงาน (Many-to-Many),1,user_id,INTEGER,NOT NULL,,PK (Composite),,ID ของผู้ใช้งาน (อ้างอิง users.user_id)
+user_organizations,ตารางจับคู่ผู้ใช้งานกับหน่วยงาน (Many-to-Many),2,org_id,INTEGER,NOT NULL,,PK (Composite),,ID ของหน่วยงาน (อ้างอิง organizations.org_id)
+user_organizations,ตารางจับคู่ผู้ใช้งานกับหน่วยงาน (Many-to-Many),3,is_primary,SMALLINT,NOT NULL,0,,IDX,สถานะสังกัดหลัก (1=สังกัดหลัก 0=สิทธิ์เข้าถึงเพิ่มเติม)
+organization_permissions,ตารางจับคู่หน่วยงานกับสิทธิ์การใช้งาน,1,org_id,INTEGER,NOT NULL,,PK (Composite),,ID ของหน่วยงาน (อ้างอิง organizations.org_id)
+organization_permissions,ตารางจับคู่หน่วยงานกับสิทธิ์การใช้งาน,2,permission_id,INTEGER,NOT NULL,,PK (Composite),,ID ของสิทธิ์ย่อย (อ้างอิง permissions.permission_id)
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,1,id,SERIAL,NOT NULL,,PK,,รหัสแบนเนอร์ Primary Key (Auto Increment)
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,2,title_th,VARCHAR(255),NOT NULL,,,,ชื่อ/หัวข้อแบนเนอร์ ภาษาไทย
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,3,title_en,VARCHAR(255),NOT NULL,,,,ชื่อ/หัวข้อแบนเนอร์ ภาษาอังกฤษ
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,4,link_url,VARCHAR(1000),NULLABLE,,,,ลิงก์เป้าหมายเมื่อผู้ใช้คลิกแบนเนอร์
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,5,start_date,TIMESTAMP,NOT NULL,,,IDX,วันที่เริ่มต้นแสดงผลแบนเนอร์
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,6,end_date,TIMESTAMP,NULLABLE,,,IDX,วันที่สิ้นสุดแสดงผล — NULL = แสดงตลอดไป
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,7,is_never_ends,SMALLINT,NOT NULL,0,,,1=ไม่มีวันหมดอายุ 0=มีวันหมดอายุ
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,8,sort_order,INTEGER,NULLABLE,,,IDX,ลำดับการแสดงผลของแบนเนอร์
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,9,is_active,SMALLINT,NOT NULL,1,,IDX,สถานะ (1=เปิดใช้งาน 0=ปิด)
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,10,created_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่สร้าง
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,11,created_by,VARCHAR(100),NULLABLE,,,,ชื่อผู้สร้างแบนเนอร์
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,12,updated_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,,วันเวลาที่แก้ไขล่าสุด
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,13,updated_by,VARCHAR(100),NULLABLE,,,,ชื่อผู้แก้ไขล่าสุด
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,14,deleted_at,TIMESTAMP,NULLABLE,,,,วันเวลาที่ลบ (Soft Delete)
+banners,ตารางสำหรับเก็บข้อมูลแบนเนอร์ที่แสดงบน Homepage รองรับ Soft Delete และ 2 ภาษา,15,deleted_by,VARCHAR(100),NULLABLE,,,,ชื่อผู้ลบ
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,1,id,SERIAL,NOT NULL,,PK,,รหัสไฟล์ Primary Key (Auto Increment)
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,2,original_name,VARCHAR(255),NOT NULL,,,,ชื่อไฟล์ต้นฉบับที่ผู้ใช้ส่งมา
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,3,saved_name,VARCHAR(255),NOT NULL,,,,ชื่อไฟล์ที่บันทึกจริงในระบบ (มักเป็น UUID หรือ timestamp)
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,4,path,VARCHAR(2000),NOT NULL,,,,พาธไฟล์ที่บันทึก เช่น /uploads/banners/xxx.jpg
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,5,mime_type,VARCHAR(100),NULLABLE,,,,ประเภทไฟล์ตามมาตรฐาน MIME เช่น image/jpeg application/pdf
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,6,size,BIGINT,NULLABLE,,,,ขนาดไฟล์ หน่วยเป็น bytes
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,7,extension,VARCHAR(20),NULLABLE,,,,นามสกุลไฟล์ เช่น .jpg .png .pdf
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,8,ref_table,VARCHAR(50),NULLABLE,,,IDX,ชื่อตารางที่ผูกไว้ เช่น users banners organizations
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,9,ref_id,INTEGER,NULLABLE,,,IDX,ID ของ record ที่ผูกไว้ เช่น user_id = 2
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,10,tag,VARCHAR(50),NULLABLE,,,,ประเภทการใช้งานไฟล์ เช่น avatar banner document
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,11,sort_order,INTEGER,NOT NULL,1,,,ลำดับการแสดงผล (กรณีมีหลายไฟล์ต่อ 1 record)
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,12,is_temp,SMALLINT,NOT NULL,1,,IDX,1=ไฟล์ชั่วคราว (ยังไม่ผูก) 0=ไฟล์จริง (ผูกกับ record แล้ว)
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,13,is_active,SMALLINT,NOT NULL,1,,,สถานะ (1=ใช้งาน 0=ปิด)
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,14,created_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,IDX,วันเวลาที่อัปโหลด
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,15,created_by,VARCHAR(100),NULLABLE,,,,ชื่อหรือ ID ผู้อัปโหลด
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,16,deleted_at,TIMESTAMP,NULLABLE,,,,วันเวลาที่ลบ (Soft Delete)
+uploads,ตารางสำหรับเก็บข้อมูลการอัปโหลดไฟล์ทุกประเภท รองรับการเชื่อมโยงกับตารางอื่นผ่าน ref_table/ref_id,17,deleted_by,VARCHAR(100),NULLABLE,,,,ชื่อผู้ที่ทำการลบไฟล์
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,1,log_id,SERIAL,NOT NULL,,PK,,รหัส ID ของ Log แต่ละรายการ (Auto Increment)
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,2,action_type,VARCHAR(50),NOT NULL,,,,ประเภทกิจกรรม เช่น CREATE UPDATE DELETE
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,3,module_name,VARCHAR(100),NOT NULL,,,IDX,ชื่อโมดูลหรือตารางที่ถูกแก้ไข เช่น organizations users
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,4,record_id,VARCHAR(100),NULLABLE,,,IDX,ID ของ record ที่ถูกกระทำ
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,5,old_data,JSONB,NULLABLE,,,,ข้อมูลเดิมก่อนแก้ไข เก็บเป็น JSON เพื่อเปรียบเทียบย้อนหลัง
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,6,new_data,JSONB,NULLABLE,,,,ข้อมูลใหม่หลังแก้ไข เก็บเป็น JSON
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,7,remark,TEXT,NULLABLE,,,,หมายเหตุหรือเหตุผลการดำเนินการ (ส่งมาจากหน้าจอ)
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,8,ip_address,VARCHAR(45),NULLABLE,,,,IP Address ของ Client (รองรับทั้ง IPv4 และ IPv6)
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,9,user_agent,TEXT,NULLABLE,,,,ข้อมูล Browser / Device ของ Client
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,10,created_by,INTEGER,NULLABLE,,,,ID ของผู้ใช้งานที่ทำรายการ (อ้างอิง users.user_id)
+audit_logs,ตารางเก็บ Log กลางสำหรับบันทึกประวัติการสร้าง แก้ไข หรือลบข้อมูลสำคัญทุกโมดูล,11,created_at,TIMESTAMP,NOT NULL,CURRENT_TIMESTAMP,,IDX,วันเวลาที่เกิดบันทึกกิจกรรม

@@ -16,6 +16,7 @@ import { FncDB } from 'src/common/services/fnc-db.service';
 import { FncCustom } from 'src/common/fnc-custom';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { MockSsoUtil } from 'src/common/utils/mock-sso.util';
 
 @Injectable()
 export class AuthService extends BaseApiService {
@@ -53,12 +54,27 @@ export class AuthService extends BaseApiService {
    */
   async login(username: string, password: string): Promise<SsoAuthResponseDto> {
     try {
-      const { result_code, result_text, result_data } = await this.get<
-        SsoBaseResponse<SsoAuthData>
-      >({
-        url: `${this.ssoBaseUrl}/auth2/`,
-        config: { params: { user: username, pass: password } },
-      });
+      const useMock = this.configService.get<string>('USE_MOCK_SSO') === 'true';
+      let result_code: string;
+      let result_text: string | undefined;
+      let result_data: SsoAuthData;
+
+      if (useMock) {
+        this.logger.warn(`⚠️ USING MOCK SSO LOGIN FOR: ${username}`);
+        result_code = '1000';
+        result_text = 'Success';
+        result_data = MockSsoUtil.getMockSsoData(username);
+      } else {
+        const response = await this.get<
+          SsoBaseResponse<SsoAuthData>
+        >({
+          url: `${this.ssoBaseUrl}/auth2/`,
+          config: { params: { user: username, pass: password } },
+        });
+        result_code = response.result_code;
+        result_text = response.result_text;
+        result_data = response.result_data;
+      }
 
       if (result_code !== '1000') {
         const errorMsg = result_text || 'Username หรือ Password ไม่ถูกต้อง';
@@ -115,12 +131,24 @@ export class AuthService extends BaseApiService {
    */
   async verify(token: string): Promise<SsoAuthResponseDto> {
     try {
-      const { result_code, result_data } = await this.get<
-        SsoBaseResponse<SsoAuthData>
-      >({
-        url: `${this.ssoBaseUrl}/verify2`,
-        config: { params: { token } },
-      });
+      const useMock = this.configService.get<string>('USE_MOCK_SSO') === 'true';
+      let result_code: string;
+      let result_data: SsoAuthData;
+
+      if (useMock) {
+        this.logger.warn(`⚠️ USING MOCK SSO VERIFY`);
+        result_code = '1000';
+        result_data = MockSsoUtil.getMockSsoData('mock_user', token);
+      } else {
+        const response = await this.get<
+          SsoBaseResponse<SsoAuthData>
+        >({
+          url: `${this.ssoBaseUrl}/verify2`,
+          config: { params: { token } },
+        });
+        result_code = response.result_code;
+        result_data = response.result_data;
+      }
 
       if (result_code !== '1000') {
         throw new UnauthorizedException('Token ไม่ถูกต้องหรือหมดอายุแล้ว');

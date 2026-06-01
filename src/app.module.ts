@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common';
 import { BannersModule } from './banners/banners.module';
+import { AboutUsModule } from './about-us/about-us.module';
+import { NewsSettingsModule } from './news-settings/news-settings.module';
+import { TagsModule } from './tags/tags.module';
+import { ManualModule } from './manual/manual.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -32,6 +36,10 @@ import { join } from 'path';
     ScheduleModule.forRoot(),
     UploadsModule,
     BannersModule,
+    AboutUsModule,
+    NewsSettingsModule,
+    TagsModule,
+    ManualModule,
   ],
   controllers: [AppController],
   providers: [AppService],

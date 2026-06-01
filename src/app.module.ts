@@ -4,6 +4,7 @@ import { AboutUsModule } from './about-us/about-us.module';
 import { NewsSettingsModule } from './news-settings/news-settings.module';
 import { TagsModule } from './tags/tags.module';
 import { ManualModule } from './manual/manual.module';
+import { FaqSettingModule } from './faq-setting/faq-setting.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -40,6 +41,7 @@ import { join } from 'path';
     NewsSettingsModule,
     TagsModule,
     ManualModule,
+    FaqSettingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

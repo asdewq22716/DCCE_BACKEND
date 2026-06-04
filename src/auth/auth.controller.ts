@@ -33,7 +33,7 @@ export class AuthController {
   async login(
     @Body() dto: SsoLoginDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ user: SsoAuthResponseDto; roles: TypeRoles[] }> {
+  ): Promise<{ user: SsoAuthResponseDto; roles: TypeRoles[]; access_token?: string }> {
     const user_data = await this.authService.login(dto.user, dto.pass);
     const { user, roles } = await this.usersService.getUserById(
       user_data.user_id,
@@ -42,10 +42,16 @@ export class AuthController {
       userId: user.user_id,
       username: user.sso_username,
     });
-    res.cookie('access_token', token, { httpOnly: true });
+    res.cookie('access_token', token, { 
+      httpOnly: true, 
+      path: '/',
+      secure: true,
+      sameSite: 'none' 
+    });
     return {
       user: user,
       roles: roles,
+      access_token: token,
     };
   }
 
@@ -54,7 +60,7 @@ export class AuthController {
   async verify(
     @Body() dto: SsoVerifyDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ user: SsoAuthResponseDto; roles: TypeRoles[] }> {
+  ): Promise<{ user: SsoAuthResponseDto; roles: TypeRoles[]; access_token?: string }> {
     const user_data = await this.authService.verify(dto.token);
     const { user, roles } = await this.usersService.getUserById(
       user_data.user_id,
@@ -63,17 +69,27 @@ export class AuthController {
       userId: user.user_id,
       username: user.sso_username,
     });
-    res.cookie('access_token', token, { httpOnly: true });
+    res.cookie('access_token', token, { 
+      httpOnly: true,
+      path: '/',
+      secure: true,
+      sameSite: 'none'
+    });
     return {
       user: user,
       roles: roles,
+      access_token: token,
     };
   }
 
   @Post('sso/logout')
   @ApiOperation({ summary: 'Logout and clear cookie' })
   async logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token');
+    res.clearCookie('access_token', {
+      path: '/',
+      secure: true,
+      sameSite: 'none'
+    });
     return { message: 'Logged out successfully' };
   }
 

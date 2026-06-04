@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { TitleBannerSettingsModule } from './title-banner-settings/title-banner-settings.module';
+import { TableauModule } from './tableau/tableau.module';
 import { BannersModule } from './banners/banners.module';
 import { AboutUsModule } from './about-us/about-us.module';
 import { NewsSettingsModule } from './news-settings/news-settings.module';
@@ -42,6 +44,8 @@ import { join } from 'path';
     TagsModule,
     ManualModule,
     FaqSettingModule,
+    TableauModule,
+    TitleBannerSettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

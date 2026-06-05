@@ -6,7 +6,7 @@ import { PgPoolService } from './pg-pool.service';
 export class FncDB {
   private readonly logger = new Logger(FncDB.name);
 
-  constructor(private readonly pgPool: PgPoolService) {}
+  constructor(private readonly pgPool: PgPoolService) { }
 
   // ---------- Transaction Handling ----------
 
@@ -51,6 +51,7 @@ export class FncDB {
     orderBy?: string;
     limit?: number;
     offset?: number;
+    debug?: boolean;
   }): Promise<T[]> {
     let sql = options.select;
     if (options.where) {
@@ -73,6 +74,11 @@ export class FncDB {
     if (options.offset !== undefined && options.offset !== null) {
       sql += ` OFFSET ${options.offset}`;
     }
+
+    if (options.debug) {
+      this.logger.debug(`[QueryBuilder SQL] ${sql}`);
+    }
+
     return this.query<T>(sql);
   }
 
@@ -135,11 +141,11 @@ export class FncDB {
   ): Promise<boolean> {
     const { clause, values } = this.buildWhereClause(where);
     const sql = `SELECT 1 FROM "${table}" WHERE ${clause} LIMIT 1`;
-    
-    const result = client 
+
+    const result = client
       ? await this.queryTx(client, sql, values)
       : await this.query(sql, values);
-      
+
     return result.length > 0;
   }
 

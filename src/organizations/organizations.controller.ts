@@ -9,8 +9,10 @@ import {
   Query,
   ParseIntPipe,
   Req,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationsService } from './organizations.service';
 import { AssignUserDto } from './dto/assign-user.dto';
 import { AssignQueryDto } from './dto/assign-query.dto';
@@ -23,6 +25,8 @@ import { BranchQueryDto } from './dto/organizations-queries.dto';
 import { AssignOrgPermissionsDto } from './dto/assign-org-permissions.dto';
 import { OrganizationType } from './types/organization.type';
 
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('organizations')
 export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) { }

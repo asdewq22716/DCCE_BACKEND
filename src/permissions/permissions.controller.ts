@@ -1,5 +1,6 @@
-import { Controller, Get, Put, Body, Post, Param, ParseIntPipe, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiParam } from '@nestjs/swagger';
+import { Controller, Get, Put, Body, Post, Param, ParseIntPipe, Req, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsService } from './permissions.service';
 import { SyncPermissionsDto } from './dto/sync-permissions.dto';
 import { SyncPermissionsExamples } from './dto/sync-permissions.examples';
@@ -7,6 +8,8 @@ import { BulkUpdateUserOrgPermissionsDto } from './dto/user-org-permissions.dto'
 import { FncCustom } from 'src/common/fnc-custom';
 
 @ApiTags('Permissions')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('permissions')
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}

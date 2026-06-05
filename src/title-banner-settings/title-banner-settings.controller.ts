@@ -5,7 +5,7 @@ import { CreateTitleBannerSettingDto } from './dto/create-title-banner-setting.d
 import { UpdateTitleBannerSettingDto } from './dto/update-title-banner-setting.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
-@ApiTags('Title Banner Settings')
+@ApiTags('Title Banner Settings (จัดการตั้งค่าข้อความแบนเนอร์)')
 @Controller('title-banner-settings')
 export class TitleBannerSettingsController {
   constructor(private readonly titleBannerSettingsService: TitleBannerSettingsService) {}

@@ -4,7 +4,7 @@ import { AuditLogQueryDto } from './dto/audit-log-query.dto';
 
 @Injectable()
 export class AuditLogsService {
-  constructor(private readonly db: FncDB) {}
+  constructor(private readonly db: FncDB) { }
 
   /**
    * ดึงรายการประวัติกิจกรรมทั้งหมด พร้อมตัวกรองและการแบ่งหน้าแบบยืดหยุ่น
@@ -68,7 +68,7 @@ export class AuditLogsService {
           SELECT 
             al.log_id,
             al.created_by,
-            u.username AS creator_username,
+            u.sso_username AS creator_username,
             al.action_type,
             al.module_name,
             al.record_id,
@@ -85,6 +85,7 @@ export class AuditLogsService {
         orderBy: 'al.created_at DESC',
         limit,
         offset,
+        debug: true,
       });
       const totalPages = Math.ceil(totalItems / limit);
 
@@ -113,7 +114,7 @@ export class AuditLogsService {
       `SELECT 
         al.log_id,
         al.created_by,
-        u.username AS creator_username,
+        u.sso_username AS creator_username,
         al.action_type,
         al.module_name,
         al.record_id,

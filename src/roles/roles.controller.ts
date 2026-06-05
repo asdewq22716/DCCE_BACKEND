@@ -8,8 +8,10 @@ import {
   Param,
   ParseIntPipe,
   Req,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -17,6 +19,8 @@ import { AssignPermissionsDto } from './dto/assign-permissions.dto';
 import { FncCustom } from 'src/common/fnc-custom';
 
 @ApiTags('Roles')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('roles')
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}

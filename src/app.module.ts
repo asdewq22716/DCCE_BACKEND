@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TitleBannerSettingsModule } from './title-banner-settings/title-banner-settings.module';
+import { ApiObjectivesModule } from './api-requests/api-objectives/api-objectives.module';
+import { ServerIpsModule } from './api-requests/server-ips/server-ips.module';
+import { ApiRequestsModule } from './api-requests/api-requests.module';
 import { TableauModule } from './tableau/tableau.module';
 import { BannersModule } from './banners/banners.module';
 import { AboutUsModule } from './about-us/about-us.module';
@@ -46,6 +49,9 @@ import { join } from 'path';
     FaqSettingModule,
     TableauModule,
     TitleBannerSettingsModule,
+    ApiObjectivesModule,
+    ServerIpsModule,
+    ApiRequestsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

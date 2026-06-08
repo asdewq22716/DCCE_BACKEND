@@ -9,6 +9,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger EasyPanel Deploy
-        run: |
-          curl -X GET "${{ secrets.EASYPANEL_DEPLOY_HOOK }}"
+      - name: Trigger EasyPanel Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            curl -s -X GET "http://localhost:3000/api/deploy/42c7c65ad3fed56e4f45976232b25f8b374e1a0f530506cc"

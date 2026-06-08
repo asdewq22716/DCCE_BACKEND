@@ -21,17 +21,14 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  // Setup Swagger (ย้ายไป /api-docs เพื่อไม่ชนกับ global prefix)
+  // Setup Swagger
   const config = new DocumentBuilder()
     .setTitle('DCCE Backend API')
     .setDescription('The DCCE API description')
     .setVersion('1.0')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-docs', app, document);
-
-  // Global prefix → ทุก route จะมี /api/ นำหน้า
-  app.setGlobalPrefix('api');
+  SwaggerModule.setup('docs', app, document);
 
   // 2. เปิดใช้งานเครื่องสแกนข้อมูลทั่วทั้งโปรเจ็ค
   app.useGlobalPipes(

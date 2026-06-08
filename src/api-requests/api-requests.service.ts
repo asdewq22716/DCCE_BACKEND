@@ -4,6 +4,7 @@ import { AuditLogService } from '../common/services/audit-log.service';
 import { CreateApiRequestDto } from './dto/create-api-request.dto';
 import { UpdateApiRequestDto, UpdateApiRequestStatusDto } from './dto/update-api-request.dto';
 import { ApiRequestQueryDto } from './dto/api-request-query.dto';
+import { ApprovalsService } from '../approvals/approvals.service';
 
 @Injectable()
 export class ApiRequestsService {
@@ -12,6 +13,7 @@ export class ApiRequestsService {
   constructor(
     private readonly db: FncDB,
     private readonly auditLogService: AuditLogService,
+    private readonly approvalsService: ApprovalsService,
   ) { }
 
   async findAll(query: ApiRequestQueryDto) {
@@ -147,8 +149,23 @@ export class ApiRequestsService {
         { userId: parseInt(userId, 10) || 0 },
       );
 
+      // ส่งงานเข้า Inbox ระบบอนุมัติส่วนกลาง
+      await this.approvalsService.createApproval({
+        ref_table: 'api_requests',
+        ref_id: newItem.id.toString(),
+        title: `คำขอเชื่อมต่อ API: ${newRequestId}`,
+        payload: {
+          request_id: newRequestId,
+          app_url: newItem.app_url,
+          environment: newItem.environment,
+          objective_text: newItem.objective_text
+        },
+        required_role: 'super_admin', // ใครเป็น super_admin ก็สามารถอนุมัติได้
+        requester_id: userId
+      }, client);
+
       await this.db.commit(client);
-      return { success: true, message: 'บันทึกคำขอสำเร็จ', data: newItem };
+      return { success: true, message: 'บันทึกคำขอและส่งเรื่องให้อนุมัติเรียบร้อย', data: newItem };
     } catch (err: any) {
       await this.db.rollback(client);
       this.logger.error(`Failed to create: ${err.message}`, err.stack);
@@ -213,6 +230,23 @@ export class ApiRequestsService {
   async updateStatus(id: number, updateDto: UpdateApiRequestStatusDto, userId: string) {
     const oldItem = await this.findOne(id);
 
+    // 1. ค้นหาว่ามีงานรออนุมัติอยู่ในตารางกลาง (Approvals) หรือไม่
+    const approvalSql = `SELECT id FROM approvals WHERE ref_table = 'api_requests' AND ref_id = $1 AND status = 'pending' LIMIT 1`;
+    const pendingTasks = await this.db.query(approvalSql, [id.toString()]);
+
+    if (pendingTasks && pendingTasks.length > 0) {
+      // 2. ถ้ามีงานใน Inbox ให้ไปใช้ระบบ Approvals จัดการแทน (ซึ่งมันจะกลับมาอัปเดต api_requests ให้อัตโนมัติ)
+      const action = updateDto.status === 'approved' ? 'approved' : 'rejected';
+      await this.approvalsService.actionApproval(pendingTasks[0].id, { action }, userId);
+      
+      return { 
+        success: true, 
+        message: `บันทึกการอนุมัติเป็น ${updateDto.status} สำเร็จผ่านระบบ Approvals กลาง`,
+        data: { ...oldItem, status: updateDto.status }
+      };
+    }
+
+    // 3. Fallback: ถ้าไม่มีงานในตารางกลาง (เช่น เป็นข้อมูลเก่า) ให้อัปเดตตารางตรงๆ แบบเดิม
     const client = await this.db.startTransaction();
     try {
       const data = {

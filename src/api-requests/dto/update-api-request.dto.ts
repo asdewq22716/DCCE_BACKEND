@@ -10,4 +10,9 @@ export class UpdateApiRequestStatusDto {
   @IsIn(['pending', 'approved', 'rejected'])
   @IsOptional()
   status?: string;
+
+  @ApiPropertyOptional({ description: 'ความคิดเห็น/เหตุผล (ถ้ามี)' })
+  @IsString()
+  @IsOptional()
+  comment?: string;
 }

@@ -11,7 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 @Controller('api-requests')
 export class ApiRequestsController {
-  constructor(private readonly apiRequestsService: ApiRequestsService) {}
+  constructor(private readonly apiRequestsService: ApiRequestsService) { }
 
   @Get()
   @ApiOperation({ summary: 'ดึงรายการคำขอใช้งาน API ทั้งหมด (พร้อมฟิลเตอร์และการแบ่งหน้า)' })

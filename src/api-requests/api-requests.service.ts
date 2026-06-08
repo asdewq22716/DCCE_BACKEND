@@ -60,6 +60,26 @@ export class ApiRequestsService {
       offset,
     });
 
+    // ดึง Approval Logs สำหรับทุกรายการใน List แบบ Batch เพื่อไม่ให้เกิด N+1 Query
+    if (items.length > 0) {
+      const itemIds = items.map(item => item.id.toString());
+      const placeholders = itemIds.map((_, i) => `$${i + 1}`).join(',');
+      
+      const logsSql = `
+        SELECT al.*, a.ref_id
+        FROM approval_logs al
+        JOIN approvals a ON al.approval_id = a.id
+        WHERE a.ref_table = 'api_requests' AND a.ref_id IN (${placeholders})
+        ORDER BY al.created_at ASC
+      `;
+      const allLogs = await this.db.query(logsSql, itemIds);
+
+      // Map logs กลับไปใส่ในแต่ละ Item
+      items.forEach(item => {
+        item.approval_logs = allLogs.filter(log => log.ref_id === item.id.toString());
+      });
+    }
+
     const totalPages = Math.ceil(totalItems / limit);
 
     return {
@@ -93,7 +113,21 @@ export class ApiRequestsService {
     if (items.length === 0) {
       throw new NotFoundException('ไม่พบข้อมูลคำขอใช้งาน API');
     }
-    return items[0];
+
+    const requestData = items[0];
+
+    // ดึงประวัติการอนุมัติ (Approval Logs) พร้อมคอมเมนต์ของแอดมิน แนบกลับไปด้วย
+    const logsSql = `
+      SELECT al.* 
+      FROM approval_logs al
+      JOIN approvals a ON al.approval_id = a.id
+      WHERE a.ref_table = 'api_requests' AND a.ref_id = $1
+      ORDER BY al.created_at DESC
+    `;
+    const approvalLogs = await this.db.query(logsSql, [id.toString()]);
+    requestData.approval_logs = approvalLogs;
+
+    return requestData;
   }
 
   async create(createDto: CreateApiRequestDto, userId: string) {
@@ -237,7 +271,7 @@ export class ApiRequestsService {
     if (pendingTasks && pendingTasks.length > 0) {
       // 2. ถ้ามีงานใน Inbox ให้ไปใช้ระบบ Approvals จัดการแทน (ซึ่งมันจะกลับมาอัปเดต api_requests ให้อัตโนมัติ)
       const action = updateDto.status === 'approved' ? 'approved' : 'rejected';
-      await this.approvalsService.actionApproval(pendingTasks[0].id, { action }, userId);
+      await this.approvalsService.actionApproval(pendingTasks[0].id, { action, comment: updateDto.comment }, userId);
       
       return { 
         success: true, 

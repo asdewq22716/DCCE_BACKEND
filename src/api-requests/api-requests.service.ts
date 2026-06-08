@@ -131,6 +131,7 @@ export class ApiRequestsService {
       if (createDto.server_ip_id !== undefined) data.server_ip_id = createDto.server_ip_id;
       if (createDto.callback_url !== undefined) data.callback_url = createDto.callback_url;
       if (createDto.environment !== undefined) data.environment = createDto.environment;
+      if (createDto.comment !== undefined) data.comment = createDto.comment;
 
       const newItem = await this.db.insert('api_requests', data, client);
 
@@ -175,6 +176,7 @@ export class ApiRequestsService {
       if (updateDto.server_ip_id !== undefined) data.server_ip_id = updateDto.server_ip_id;
       if (updateDto.callback_url !== undefined) data.callback_url = updateDto.callback_url;
       if (updateDto.environment !== undefined) data.environment = updateDto.environment;
+      if (updateDto.comment !== undefined) data.comment = updateDto.comment;
 
       if (Object.keys(data).length === 0) {
         throw new BadRequestException('ไม่มีข้อมูลที่ต้องการอัปเดต');

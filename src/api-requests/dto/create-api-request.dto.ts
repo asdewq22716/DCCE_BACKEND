@@ -72,4 +72,9 @@ export class CreateApiRequestDto {
   @IsIn(['Sandbox', 'Production'])
   @IsOptional()
   environment?: string;
+
+  @ApiPropertyOptional({ description: 'ความคิดเห็น / หมายเหตุ' })
+  @IsString()
+  @IsOptional()
+  comment?: string;
 }

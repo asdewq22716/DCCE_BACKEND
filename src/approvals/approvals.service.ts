@@ -1,12 +1,16 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { FncDB } from '../common/services/fnc-db.service';
 import { CreateApprovalDto, ActionApprovalDto } from './dto/approval.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ApprovalsService {
   private readonly logger = new Logger(ApprovalsService.name);
 
-  constructor(private readonly db: FncDB) {}
+  constructor(
+    private readonly db: FncDB,
+    private readonly notificationsService: NotificationsService
+  ) {}
 
   /**
    * สร้างรายการอนุมัติใหม่ลงตารางกลาง
@@ -25,11 +29,29 @@ export class ApprovalsService {
       requester_id: dto.requester_id || 'system'
     };
 
+    let newApprovalId: number;
     if (client) {
-      return await this.db.insert('approvals', insertData, client);
+      const result = await this.db.insert('approvals', insertData, client);
+      newApprovalId = result.id;
     } else {
-      return await this.db.insert('approvals', insertData);
+      const result = await this.db.insert('approvals', insertData);
+      newApprovalId = result.id;
     }
+
+    // สร้างการแจ้งเตือน
+    await this.notificationsService.createNotification({
+      title: `รออนุมัติ: ${dto.title}`,
+      message: `มีรายการรออนุมัติใหม่จากระบบ ${dto.ref_table}`,
+      type: 'INFO',
+      action_url: `/admin/approvals`, // หน้า Inbox กลาง
+      ref_table: 'approvals',
+      ref_id: newApprovalId.toString(),
+      target_role: dto.required_role,
+      target_user_id: dto.required_user_id,
+      sender_id: dto.requester_id
+    }, client);
+
+    return { id: newApprovalId, ...insertData };
   }
 
   /**
@@ -97,6 +119,18 @@ export class ApprovalsService {
     // 5. ถ้าผ่านทั้งหมด หรือถูกปฏิเสธ ให้แจ้งไปตารางต้นทาง (Router)
     if (newStatus !== 'pending') {
       await this.notifySourceTable(task.ref_table, task.ref_id, newStatus);
+      
+      // แจ้งเตือนกลับไปยังคนขอ (requester_id) ว่าผลเป็นยังไง
+      await this.notificationsService.createNotification({
+        title: `คำขอ ${task.title} อัปเดตสถานะ`,
+        message: `คำขอของคุณถูก ${newStatus === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} แล้ว`,
+        type: newStatus === 'approved' ? 'SUCCESS' : 'ERROR',
+        action_url: `/user/my-requests`,
+        ref_table: task.ref_table,
+        ref_id: task.ref_id,
+        target_user_id: task.requester_id,
+        sender_id: userId
+      });
     }
 
     return { message: 'บันทึกการดำเนินการสำเร็จ', status: newStatus };

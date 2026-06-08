@@ -11,6 +11,7 @@ import { TagsModule } from './tags/tags.module';
 import { ManualModule } from './manual/manual.module';
 import { FaqSettingModule } from './faq-setting/faq-setting.module';
 import { ApprovalsModule } from './approvals/approvals.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';

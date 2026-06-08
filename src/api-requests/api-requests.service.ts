@@ -41,12 +41,10 @@ export class ApiRequestsService {
     const selectData = `
       SELECT 
         r.*,
-        o.name AS objective_name,
         s.ip_address AS server_ip_address,
         b.org_name AS branch_name,
         d.org_name AS division_name
       FROM api_requests r
-      LEFT JOIN api_objectives o ON r.objective_id = o.id
       LEFT JOIN server_ips s ON r.server_ip_id = s.id
       LEFT JOIN organizations b ON r.branch_id = b.org_id
       LEFT JOIN organizations d ON r.division_id = d.org_id
@@ -78,12 +76,10 @@ export class ApiRequestsService {
     const selectData = `
       SELECT 
         r.*,
-        o.name AS objective_name,
         s.ip_address AS server_ip_address,
         b.org_name AS branch_name,
         d.org_name AS division_name
       FROM api_requests r
-      LEFT JOIN api_objectives o ON r.objective_id = o.id
       LEFT JOIN server_ips s ON r.server_ip_id = s.id
       LEFT JOIN organizations b ON r.branch_id = b.org_id
       LEFT JOIN organizations d ON r.division_id = d.org_id
@@ -127,7 +123,7 @@ export class ApiRequestsService {
       if (createDto.sys_web_app !== undefined) data.sys_web_app = createDto.sys_web_app;
       if (createDto.sys_mobile_app !== undefined) data.sys_mobile_app = createDto.sys_mobile_app;
       if (createDto.sys_server_to_server !== undefined) data.sys_server_to_server = createDto.sys_server_to_server;
-      if (createDto.objective_id !== undefined) data.objective_id = createDto.objective_id;
+      if (createDto.objective_text !== undefined) data.objective_text = createDto.objective_text;
       if (createDto.api_climate_data !== undefined) data.api_climate_data = createDto.api_climate_data;
       if (createDto.api_station_data !== undefined) data.api_station_data = createDto.api_station_data;
       if (createDto.api_statistics_report !== undefined) data.api_statistics_report = createDto.api_statistics_report;
@@ -171,7 +167,7 @@ export class ApiRequestsService {
       if (updateDto.sys_web_app !== undefined) data.sys_web_app = updateDto.sys_web_app;
       if (updateDto.sys_mobile_app !== undefined) data.sys_mobile_app = updateDto.sys_mobile_app;
       if (updateDto.sys_server_to_server !== undefined) data.sys_server_to_server = updateDto.sys_server_to_server;
-      if (updateDto.objective_id !== undefined) data.objective_id = updateDto.objective_id;
+      if (updateDto.objective_text !== undefined) data.objective_text = updateDto.objective_text;
       if (updateDto.api_climate_data !== undefined) data.api_climate_data = updateDto.api_climate_data;
       if (updateDto.api_station_data !== undefined) data.api_station_data = updateDto.api_station_data;
       if (updateDto.api_statistics_report !== undefined) data.api_statistics_report = updateDto.api_statistics_report;

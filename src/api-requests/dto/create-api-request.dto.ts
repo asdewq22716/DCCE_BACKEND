@@ -32,10 +32,10 @@ export class CreateApiRequestDto {
   @IsOptional()
   sys_server_to_server?: number;
 
-  @ApiPropertyOptional({ description: 'ID ของวัตถุประสงค์การใช้งาน' })
-  @IsNumber()
+  @ApiPropertyOptional({ description: 'วัตถุประสงค์การใช้งาน (ข้อความ)' })
+  @IsString()
   @IsOptional()
-  objective_id?: number;
+  objective_text?: string;
 
   @ApiPropertyOptional({ description: 'รายการ API: ข้อมูลสภาพภูมิอากาศ (1=เลือก, 0=ไม่เลือก)', default: 0 })
   @IsNumber()

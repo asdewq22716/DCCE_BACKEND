@@ -26,6 +26,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { UploadsModule } from './uploads/uploads.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { MaintenanceModule } from './maintenance/maintenance.module';
+import { SystemServicesModule } from './system-services/system-services.module';
 
 @Module({
   imports: [
@@ -54,6 +56,8 @@ import { join } from 'path';
     ApiObjectivesModule,
     ServerIpsModule,
     ApiRequestsModule,
+    MaintenanceModule,
+    SystemServicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

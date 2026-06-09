@@ -21,22 +21,44 @@ export class ApiRequestsService {
     const limit = query.limit && query.limit > 0 ? query.limit : 10;
     const offset = (page - 1) * limit;
 
-    const search = this.db.escape(query.search);
     const status = this.db.escape(query.status);
+    const branch_id = query.branch_id;
+    const division_id = query.division_id;
+    const start_date = this.db.escape(query.start_date);
+    const end_date = this.db.escape(query.end_date);
 
     const where = [
       { fill: 'r.is_active = 1' },
       {
-        if: search,
-        fill: `(b.org_name ILIKE '%${search}%' OR d.org_name ILIKE '%${search}%' OR r.request_id ILIKE '%${search}%')`,
-      },
-      {
         if: status,
         fill: `r.status = '${status}'`,
       },
+      {
+        if: branch_id !== undefined,
+        fill: `r.branch_id = ${branch_id}`,
+      },
+      {
+        if: division_id !== undefined,
+        fill: `r.division_id = ${division_id}`,
+      },
+      {
+        if: start_date,
+        fill: `r.created_at >= '${start_date} 00:00:00'`,
+      },
+      {
+        if: end_date,
+        fill: `r.created_at <= '${end_date} 23:59:59'`,
+      },
     ];
 
-    const selectCount = 'SELECT COUNT(*)::int as total FROM api_requests r';
+    const fromAndJoins = `
+      FROM api_requests r
+      LEFT JOIN server_ips s ON r.server_ip_id = s.id
+      LEFT JOIN organizations b ON r.branch_id = b.org_id
+      LEFT JOIN organizations d ON r.division_id = d.org_id
+    `;
+
+    const selectCount = `SELECT COUNT(*)::int as total ${fromAndJoins}`;
     const totalResult = await this.db.queryBuilder({ select: selectCount, where });
     const totalItems = totalResult[0]?.total || 0;
 
@@ -46,10 +68,7 @@ export class ApiRequestsService {
         s.ip_address AS server_ip_address,
         b.org_name AS branch_name,
         d.org_name AS division_name
-      FROM api_requests r
-      LEFT JOIN server_ips s ON r.server_ip_id = s.id
-      LEFT JOIN organizations b ON r.branch_id = b.org_id
-      LEFT JOIN organizations d ON r.division_id = d.org_id
+      ${fromAndJoins}
     `;
 
     const items = await this.db.queryBuilder({
@@ -64,7 +83,7 @@ export class ApiRequestsService {
     if (items.length > 0) {
       const itemIds = items.map(item => item.id.toString());
       const placeholders = itemIds.map((_, i) => `$${i + 1}`).join(',');
-      
+
       const logsSql = `
         SELECT al.*, a.ref_id
         FROM approval_logs al
@@ -272,9 +291,9 @@ export class ApiRequestsService {
       // 2. ถ้ามีงานใน Inbox ให้ไปใช้ระบบ Approvals จัดการแทน (ซึ่งมันจะกลับมาอัปเดต api_requests ให้อัตโนมัติ)
       const action = updateDto.status === 'approved' ? 'approved' : 'rejected';
       await this.approvalsService.actionApproval(pendingTasks[0].id, { action, comment: updateDto.comment }, userId);
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         message: `บันทึกการอนุมัติเป็น ${updateDto.status} สำเร็จผ่านระบบ Approvals กลาง`,
         data: { ...oldItem, status: updateDto.status }
       };

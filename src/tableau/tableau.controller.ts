@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Redirect, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Param, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { TableauService } from './tableau.service';
 import { TABLEAU_REPORT_CODES } from './dto/get-tableau-ticket.dto';
@@ -9,18 +9,26 @@ export class TableauController {
   constructor(private readonly tableauService: TableauService) { }
 
   // GET /tableau/dashboard/:reportCode
-  // Backend ขอ ticket เอง → Redirect ไป Tableau ทันที
+  // Backend ขอ ticket เอง → คืน URL ที่ประกอบ token แล้วกลับไป
   @Get('dashboard/:reportCode')
-  @Redirect()
-  @ApiOperation({ summary: 'เปิด Tableau Dashboard (Backend ขอ ticket เอง แล้ว Redirect)' })
+  @ApiOperation({ summary: 'ขอ Tableau Dashboard URL พร้อม Trusted Token (Frontend เอาไปเปิดใน iframe)' })
   @ApiParam({
     name: 'reportCode',
     description: 'รหัส Dashboard ที่ต้องการเปิด',
-    enum: TABLEAU_REPORT_CODES,   // ← แสดงเป็น Dropdown ใน Swagger
+    enum: TABLEAU_REPORT_CODES,
     example: 'REP01',
   })
-  @ApiResponse({ status: 302, description: 'Redirect ไปที่ Tableau Dashboard พร้อม Trusted Ticket' })
-  async redirectToDashboard(@Param('reportCode') reportCode: string) {
+  @ApiResponse({
+    status: 200,
+    description: 'URL พร้อม token สำหรับเปิด Tableau Dashboard',
+    schema: {
+      example: {
+        success: true,
+        url: 'http://192.168.65.58/trusted/bAFdbDBKQXuC_PWJBLm2uQ==:xxx/views/REP01_/sheet0',
+      },
+    },
+  })
+  async getDashboardUrl(@Param('reportCode') reportCode: string) {
     if (!TABLEAU_REPORT_CODES.includes(reportCode as any)) {
       throw new HttpException(
         `reportCode ไม่ถูกต้อง ต้องเป็นหนึ่งใน: ${TABLEAU_REPORT_CODES.join(', ')}`,
@@ -28,8 +36,7 @@ export class TableauController {
       );
     }
 
-    const result = await this.tableauService.getTrustedUrl({ reportCode: reportCode as any });
-
-    return { url: result.url, statusCode: 302 };
+    return await this.tableauService.getTrustedUrl({ reportCode: reportCode as any });
   }
 }
+

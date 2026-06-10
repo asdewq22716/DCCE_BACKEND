@@ -17,9 +17,12 @@ export class TableauService extends BaseApiService {
   async getTrustedUrl(dto: GetTableauTicketDto): Promise<{ success: boolean; url: string }> {
     const { reportCode, username: dtoUsername } = dto;
 
-    const tableauServerUrl = this.configService.get<string>('TABLEAU_SERVER_URL', 'http://192.168.65.58');
+    const tableauServerUrl = this.configService.get<string>('TABLEAU_SERVER_URL');
     // ใช้ username จาก DTO ถ้ามี ไม่งั้นดึงจาก env
-    const username = dtoUsername || this.configService.get<string>('TABLEAU_USERNAME', 'admin_dcce');
+    const username = dtoUsername || this.configService.get<string>('TABLEAU_USERNAME');
+
+    if (!tableauServerUrl) throw new Error('TABLEAU_SERVER_URL ไม่ได้กำหนดใน env');
+    if (!username) throw new Error('TABLEAU_USERNAME ไม่ได้กำหนดใน env');
 
     // แปลง reportCode → dashboard path จริง
     const dashboardPath = TABLEAU_DASHBOARD_PATHS[reportCode];

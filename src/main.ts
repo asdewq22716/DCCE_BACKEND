@@ -26,9 +26,14 @@ async function bootstrap() {
     .setTitle('DCCE Backend API')
     .setDescription('The DCCE API description')
     .setVersion('1.0')
+    .addServer('https://dcce-dcce-backend.1gusxl.easypanel.host', 'Production (EasyPanel)')
+    .addServer('http://localhost:4721', 'Local Development')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
+
+
 
   // 2. เปิดใช้งานเครื่องสแกนข้อมูลทั่วทั้งโปรเจ็ค
   app.useGlobalPipes(

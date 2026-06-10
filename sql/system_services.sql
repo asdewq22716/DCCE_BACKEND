@@ -2,17 +2,14 @@ CREATE TABLE system_services (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     remark TEXT,
-    
     -- Checkbox fields (1 field per checkbox)
     permission_by_org SMALLINT DEFAULT 0,
     permission_by_role SMALLINT DEFAULT 0,
     manage_external_permission SMALLINT DEFAULT 0,
     manage_system_service SMALLINT DEFAULT 0,
     view_change_history SMALLINT DEFAULT 0,
-    
     -- Status
     is_active SMALLINT DEFAULT 1,
-    
     -- Standard Audit fields
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(100),

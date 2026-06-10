@@ -1,8 +1,9 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseApiService } from '../common/services/base-api.service';
 import { HttpService } from '@nestjs/axios';
-import { GetTableauTicketDto } from './dto/get-tableau-ticket.dto';
+import * as https from 'https';
+import { GetTableauTicketDto, TABLEAU_DASHBOARD_PATHS } from './dto/get-tableau-ticket.dto';
 
 @Injectable()
 export class TableauService extends BaseApiService {
@@ -11,59 +12,59 @@ export class TableauService extends BaseApiService {
     private readonly configService: ConfigService,
   ) {
     super(httpService);
-    // You can override default config if needed here by overriding getDefaultConfig()
   }
 
   async getTrustedUrl(dto: GetTableauTicketDto): Promise<{ success: boolean; url: string }> {
-    const { dashboardPath } = dto;
-    const tableauServerUrl = this.configService.get<string>('TABLEAU_SERVER_URL', 'http://192.168.65.59');
+    const { reportCode, username: dtoUsername } = dto;
 
-    // We are using hardcoded user for now as requested
-    const username = 'admin_dcce';
+    const tableauServerUrl = this.configService.get<string>('TABLEAU_SERVER_URL', 'http://192.168.65.58');
+    // ใช้ username จาก DTO ถ้ามี ไม่งั้นดึงจาก env
+    const username = dtoUsername || this.configService.get<string>('TABLEAU_USERNAME', 'admin_dcce');
+
+    // แปลง reportCode → dashboard path จริง
+    const dashboardPath = TABLEAU_DASHBOARD_PATHS[reportCode];
+
+    const trustedUrl = `${tableauServerUrl}/trusted?username=${username}`;
+    this.logger.log(`Requesting Tableau trusted ticket: POST ${trustedUrl} (report: ${reportCode})`);
 
     try {
-      // From the provided python script, it sends username in the query string
-      // and empty body for POST request
-      console.log(tableauServerUrl);
-      console.log(`${tableauServerUrl}/trusted?username=${username}`);
-      const https = require('https');
+      // ต้องส่ง Content-Type: application/x-www-form-urlencoded + body ว่าง
+      // curl: -H "Content-Type: application/x-www-form-urlencoded" -d ""
+      // ถ้าส่ง data:{} → Axios serialize เป็น JSON → Tableau return -1
       const ticket = await this.post<string>({
-        url: `${tableauServerUrl}/trusted?username=${username}`,
-        data: {}, // Empty payload as per python script
+        url: trustedUrl,
+        data: '',
         config: {
-          headers: {}, // Empty headers as per python script
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
           responseType: 'text',
-          httpsAgent: new https.Agent({ rejectUnauthorized: false }), // Like verify=False in Python
+          httpsAgent: new https.Agent({ rejectUnauthorized: false }),
         },
       });
 
-      // -1 means error in generating ticket
+      this.logger.log(`Tableau ticket received: ${ticket}`);
+
       if (!ticket || ticket.trim() === '-1') {
-        this.logger.error('Failed to get Tableau trusted ticket (returned -1)');
-        throw new HttpException('Authentication with Tableau failed (returned -1)', HttpStatus.UNAUTHORIZED);
+        this.logger.error('Tableau returned -1: IP not in Trusted Hosts or invalid username');
+        throw new HttpException(
+          'Authentication with Tableau failed (returned -1)',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
-      // Compose the final URL
       const finalUrl = `${tableauServerUrl}/trusted/${ticket.trim()}${dashboardPath}`;
+      this.logger.log(`Final Tableau URL: ${finalUrl}`);
 
-      return {
-        success: true,
-        url: finalUrl,
-      };
+      return { success: true, url: finalUrl };
 
     } catch (error: unknown) {
       const err = error as Error;
       this.logger.error(`Tableau API Error: ${err.message}`, err.stack);
 
-      // If it's already an HttpException from our BaseApiService, throw it
-      if (err instanceof HttpException) {
-        throw err;
-      }
+      if (err instanceof HttpException) throw err;
 
-      throw new HttpException(
-        'Failed to connect to Tableau Server',
-        HttpStatus.BAD_GATEWAY,
-      );
+      throw new HttpException('Failed to connect to Tableau Server', HttpStatus.BAD_GATEWAY);
     }
   }
 }

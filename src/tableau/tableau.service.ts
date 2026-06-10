@@ -27,16 +27,15 @@ export class TableauService extends BaseApiService {
     // แปลง reportCode → dashboard path จริง
     const dashboardPath = TABLEAU_DASHBOARD_PATHS[reportCode];
 
-    const trustedUrl = `${tableauServerUrl}/trusted?username=${username}`;
-    this.logger.log(`Requesting Tableau trusted ticket: POST ${trustedUrl} (report: ${reportCode})`);
+    const trustedUrl = `${tableauServerUrl}/trusted`;
+    this.logger.log(`Requesting Tableau trusted ticket: POST ${trustedUrl}?username=${username} (report: ${reportCode})`);
 
     try {
-      // ต้องส่ง Content-Type: application/x-www-form-urlencoded + body ว่าง
-      // curl: -H "Content-Type: application/x-www-form-urlencoded" -d ""
-      // ถ้าส่ง data:{} → Axios serialize เป็น JSON → Tableau return -1
+      // ส่ง username ใน body แบบ form-encoded
+      // ตรงกับ: curl -X POST -d "username=dcceadmin" http://192.168.65.58/trusted
       const ticket = await this.post<string>({
         url: trustedUrl,
-        data: '',
+        data: `username=${encodeURIComponent(username)}`,
         config: {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

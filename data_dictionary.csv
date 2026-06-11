@@ -1,0 +1,164 @@
+table_name,table_description_th,column_name,data_type,description
+user_permissions,สิทธิ์ระดับบุคคล,user_id,INTEGER,รหัสผู้ใช้งาน
+user_permissions,สิทธิ์ระดับบุคคล,org_id,INTEGER,รหัสหน่วยงานที่ Override สิทธิ์
+user_permissions,สิทธิ์ระดับบุคคล,permission_id,INTEGER,รหัสสิทธิ์
+user_permissions,สิทธิ์ระดับบุคคล,is_deny,SMALLINT,ปฏิเสธสิทธิ์ (0=อนุญาต Override 1=ระงับ)
+,,,,
+notifications,ระบบแจ้งเตือน,id,SERIAL,รหัส ID การแจ้งเตือน (Auto Increment)
+notifications,ระบบแจ้งเตือน,title,VARCHAR(200),หัวข้อการแจ้งเตือน
+notifications,ระบบแจ้งเตือน,message,TEXT,รายละเอียดการแจ้งเตือน
+notifications,ระบบแจ้งเตือน,type,VARCHAR(20),ประเภทการแจ้งเตือน เช่น INFO / SUCCESS / ERROR
+notifications,ระบบแจ้งเตือน,action_url,TEXT,URL ปลายทางเมื่อกดเข้าแจ้งเตือน
+notifications,ระบบแจ้งเตือน,payload,JSONB,ข้อมูลเสริมในรูปแบบ JSON
+notifications,ระบบแจ้งเตือน,ref_table,VARCHAR(100),ชื่อตารางต้นทางที่เกี่ยวข้อง
+notifications,ระบบแจ้งเตือน,ref_id,VARCHAR(100),ID ของ record ในตารางต้นทาง
+notifications,ระบบแจ้งเตือน,sender_id,VARCHAR(100),รหัสผู้ส่งแจ้งเตือน (user_id หรือ 'system')
+notifications,ระบบแจ้งเตือน,target_role,VARCHAR(100),บทบาทกลุ่มเป้าหมาย (NULL = ไม่จำกัด Role)
+notifications,ระบบแจ้งเตือน,target_user_id,VARCHAR(100),รหัสผู้ใช้งานเป้าหมาย (NULL = ไม่จำกัดรายบุคคล)
+notifications,ระบบแจ้งเตือน,is_read,SMALLINT,สถานะอ่านแล้ว (0=ยังไม่อ่าน 1=อ่านแล้ว)
+notifications,ระบบแจ้งเตือน,created_at,TIMESTAMP,วันเวลาที่สร้างการแจ้งเตือน
+,,,,
+approvals,รายการรออนุมัติ,id,SERIAL,รหัส ID รายการอนุมัติ (Auto Increment)
+approvals,รายการรออนุมัติ,ref_table,VARCHAR(100),ชื่อตารางต้นทางที่ขออนุมัติ
+approvals,รายการรออนุมัติ,ref_id,VARCHAR(100),ID ของ record ในตารางต้นทาง
+approvals,รายการรออนุมัติ,title,VARCHAR(300),หัวข้อรายการอนุมัติ
+approvals,รายการรออนุมัติ,payload,JSONB,ข้อมูลประกอบรายการอนุมัติ (JSON)
+approvals,รายการรออนุมัติ,required_role,VARCHAR(100),บทบาทที่มีสิทธิ์อนุมัติ
+approvals,รายการรออนุมัติ,required_user_id,VARCHAR(100),รหัสผู้ใช้งานที่ต้องอนุมัติโดยเฉพาะ
+approvals,รายการรออนุมัติ,status,VARCHAR(20),สถานะปัจจุบัน (pending / approved / rejected)
+approvals,รายการรออนุมัติ,current_level,INTEGER,ลำดับขั้นตอนการอนุมัติปัจจุบัน
+approvals,รายการรออนุมัติ,max_level,INTEGER,จำนวนขั้นตอนการอนุมัติทั้งหมด
+approvals,รายการรออนุมัติ,requester_id,VARCHAR(100),รหัสผู้ยื่นคำขอ
+approvals,รายการรออนุมัติ,created_at,TIMESTAMP,วันเวลาที่สร้างรายการ
+approvals,รายการรออนุมัติ,updated_at,TIMESTAMP,วันเวลาที่อัปเดตสถานะล่าสุด
+,,,,
+approval_logs,ประวัติการอนุมัติ,id,SERIAL,รหัส ID Log การอนุมัติ (Auto Increment)
+approval_logs,ประวัติการอนุมัติ,approval_id,INTEGER,รหัสรายการอนุมัติที่เกี่ยวข้อง
+approval_logs,ประวัติการอนุมัติ,step,INTEGER,ลำดับขั้นตอนที่ดำเนินการ
+approval_logs,ประวัติการอนุมัติ,action,VARCHAR(20),การดำเนินการ (approved / rejected)
+approval_logs,ประวัติการอนุมัติ,comment,TEXT,ความคิดเห็นหรือเหตุผลของผู้อนุมัติ
+approval_logs,ประวัติการอนุมัติ,action_by,VARCHAR(100),รหัสผู้ดำเนินการ
+approval_logs,ประวัติการอนุมัติ,created_at,TIMESTAMP,วันเวลาที่ดำเนินการ
+,,,,
+api_requests,คำขอใช้งาน API,id,SERIAL,รหัส ID คำขอ API (Auto Increment)
+api_requests,คำขอใช้งาน API,request_id,VARCHAR(50),รหัสคำขอ (Auto Generate) รูปแบบ API-YYYY-NNN
+api_requests,คำขอใช้งาน API,branch_id,INTEGER,รหัสสาขาหลักของผู้ยื่นคำขอ
+api_requests,คำขอใช้งาน API,division_id,INTEGER,รหัสหน่วยงานย่อยของผู้ยื่นคำขอ
+api_requests,คำขอใช้งาน API,app_url,TEXT,URL ของระบบ/แอพที่ขอเชื่อมต่อ API
+api_requests,คำขอใช้งาน API,sys_web_app,SMALLINT,ประเภทระบบ: Web Application (1=ใช่)
+api_requests,คำขอใช้งาน API,sys_mobile_app,SMALLINT,ประเภทระบบ: Mobile Application (1=ใช่)
+api_requests,คำขอใช้งาน API,sys_server_to_server,SMALLINT,ประเภทระบบ: Server-to-Server (1=ใช่)
+api_requests,คำขอใช้งาน API,objective_text,TEXT,วัตถุประสงค์การขอใช้งาน API
+api_requests,คำขอใช้งาน API,api_climate_data,SMALLINT,ขอใช้ API ข้อมูลภูมิอากาศ (1=ขอ)
+api_requests,คำขอใช้งาน API,api_station_data,SMALLINT,ขอใช้ API ข้อมูลสถานีตรวจวัด (1=ขอ)
+api_requests,คำขอใช้งาน API,api_statistics_report,SMALLINT,ขอใช้ API รายงานสถิติ (1=ขอ)
+api_requests,คำขอใช้งาน API,api_climate_map,SMALLINT,ขอใช้ API แผนที่ภูมิอากาศ (1=ขอ)
+api_requests,คำขอใช้งาน API,server_ip_id,INTEGER,รหัส Server IP ที่ขออนุญาต
+api_requests,คำขอใช้งาน API,callback_url,TEXT,URL สำหรับรับผลการแจ้งสถานะ (Webhook)
+api_requests,คำขอใช้งาน API,environment,VARCHAR(20),สภาพแวดล้อมที่ขอใช้ (production / staging)
+api_requests,คำขอใช้งาน API,comment,TEXT,หมายเหตุเพิ่มเติม
+api_requests,คำขอใช้งาน API,status,VARCHAR(20),สถานะคำขอ (pending / approved / rejected)
+api_requests,คำขอใช้งาน API,is_active,SMALLINT,สถานะ Soft Delete (1=มีอยู่ 0=ถูกลบ)
+api_requests,คำขอใช้งาน API,created_by,INTEGER,รหัสผู้สร้างคำขอ
+api_requests,คำขอใช้งาน API,updated_by,INTEGER,รหัสผู้แก้ไขล่าสุด
+api_requests,คำขอใช้งาน API,created_at,TIMESTAMP,วันเวลาที่สร้างคำขอ
+api_requests,คำขอใช้งาน API,updated_at,TIMESTAMP,วันเวลาที่แก้ไขล่าสุด
+,,,,
+server_ips,จัดการ IP Address,id,SERIAL,รหัส ID Server IP (Auto Increment)
+server_ips,จัดการ IP Address,ip_address,VARCHAR(50),IP Address ของ Server ที่ได้รับอนุญาต
+server_ips,จัดการ IP Address,created_at,TIMESTAMP,วันเวลาที่เพิ่ม IP
+,,,,
+news,ข่าวประชาสัมพันธ์,id,SERIAL,รหัส ID ข่าว (Auto Increment)
+news,ข่าวประชาสัมพันธ์,title_th,VARCHAR(255),หัวข้อข่าวภาษาไทย
+news,ข่าวประชาสัมพันธ์,title_en,VARCHAR(255),หัวข้อข่าวภาษาอังกฤษ
+news,ข่าวประชาสัมพันธ์,detail_th,TEXT,รายละเอียดข่าวภาษาไทย
+news,ข่าวประชาสัมพันธ์,detail_en,TEXT,รายละเอียดข่าวภาษาอังกฤษ
+news,ข่าวประชาสัมพันธ์,tags,JSONB,แท็กของข่าว (Array JSON)
+news,ข่าวประชาสัมพันธ์,link_url,TEXT,URL เพิ่มเติม
+news,ข่าวประชาสัมพันธ์,start_date,DATE,วันที่เริ่มประกาศ
+news,ข่าวประชาสัมพันธ์,end_date,DATE,วันที่สิ้นสุดการประกาศ
+news,ข่าวประชาสัมพันธ์,is_never_ends,SMALLINT,สถานะไม่มีวันหมดอายุ (1=ใช่ 0=ไม่ใช่)
+news,ข่าวประชาสัมพันธ์,is_active,SMALLINT,สถานะการใช้งาน (1=เปิด 0=ปิด)
+news,ข่าวประชาสัมพันธ์,deleted_at,TIMESTAMP,วันเวลาที่ถูกลบ (Soft Delete)
+news,ข่าวประชาสัมพันธ์,created_by,VARCHAR(100),รหัสผู้สร้าง
+news,ข่าวประชาสัมพันธ์,updated_by,VARCHAR(100),รหัสผู้แก้ไขล่าสุด
+news,ข่าวประชาสัมพันธ์,deleted_by,VARCHAR(100),รหัสผู้ลบ
+news,ข่าวประชาสัมพันธ์,created_at,TIMESTAMP,วันเวลาที่สร้าง
+news,ข่าวประชาสัมพันธ์,updated_at,TIMESTAMP,วันเวลาที่อัปเดตล่าสุด
+,,,,
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,id,SERIAL,รหัส ID คำถาม (Auto Increment)
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,question,TEXT,คำถาม
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,answer,TEXT,คำตอบ
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,is_active,SMALLINT,สถานะการใช้งาน (1=เปิด 0=ปิด)
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,deleted_at,TIMESTAMP,วันเวลาที่ถูกลบ (Soft Delete)
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,created_by,VARCHAR(100),รหัสผู้สร้าง
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,updated_by,VARCHAR(100),รหัสผู้แก้ไขล่าสุด
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,deleted_by,VARCHAR(100),รหัสผู้ลบ
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,created_at,TIMESTAMP,วันเวลาที่สร้าง
+faq_setting,ตั้งค่าคำถามที่พบบ่อย,updated_at,TIMESTAMP,วันเวลาที่อัปเดตล่าสุด
+,,,,
+about_us,ข้อมูลเกี่ยวกับเรา,id,SERIAL,รหัส ID (Fix = 1 เสมอ)
+about_us,ข้อมูลเกี่ยวกับเรา,topic_th,VARCHAR(255),หัวข้อเกี่ยวกับเรา (ภาษาไทย)
+about_us,ข้อมูลเกี่ยวกับเรา,topic_en,VARCHAR(255),หัวข้อเกี่ยวกับเรา (ภาษาอังกฤษ)
+about_us,ข้อมูลเกี่ยวกับเรา,detail_th,TEXT,รายละเอียดเกี่ยวกับเรา (ภาษาไทย)
+about_us,ข้อมูลเกี่ยวกับเรา,detail_en,TEXT,รายละเอียดเกี่ยวกับเรา (ภาษาอังกฤษ)
+about_us,ข้อมูลเกี่ยวกับเรา,bg_text_th,VARCHAR(255),ข้อความพื้นหลัง (ภาษาไทย)
+about_us,ข้อมูลเกี่ยวกับเรา,bg_text_en,VARCHAR(255),ข้อความพื้นหลัง (ภาษาอังกฤษ)
+about_us,ข้อมูลเกี่ยวกับเรา,updated_by,VARCHAR(100),รหัสผู้แก้ไขล่าสุด
+about_us,ข้อมูลเกี่ยวกับเรา,updated_at,TIMESTAMP,วันเวลาที่อัปเดตล่าสุด
+,,,,
+master_tags,แท็กข้อมูลหลัก,id,SERIAL,รหัส ID ของ Tag (Auto Increment)
+master_tags,แท็กข้อมูลหลัก,name_th,VARCHAR(100),ชื่อ Tag (ภาษาไทย)
+master_tags,แท็กข้อมูลหลัก,name_en,VARCHAR(100),ชื่อ Tag (ภาษาอังกฤษ)
+master_tags,แท็กข้อมูลหลัก,is_active,SMALLINT,สถานะการใช้งาน (1=เปิด 0=ปิด)
+master_tags,แท็กข้อมูลหลัก,deleted_at,TIMESTAMP,วันเวลาที่ถูกลบ (Soft Delete)
+master_tags,แท็กข้อมูลหลัก,created_by,VARCHAR(100),รหัสผู้สร้าง
+master_tags,แท็กข้อมูลหลัก,updated_by,VARCHAR(100),รหัสผู้แก้ไขล่าสุด
+master_tags,แท็กข้อมูลหลัก,deleted_by,VARCHAR(100),รหัสผู้ลบ
+master_tags,แท็กข้อมูลหลัก,created_at,TIMESTAMP,วันเวลาที่สร้าง
+master_tags,แท็กข้อมูลหลัก,updated_at,TIMESTAMP,วันเวลาที่อัปเดตล่าสุด
+,,,,
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,id,SERIAL,รหัส ID ของการตั้งค่า (Auto Increment)
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,branch,VARCHAR(100),สาขาหรือจุดแสดงผลแบนเนอร์
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,topic,VARCHAR(255),หัวข้อที่แสดง
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,description_th,TEXT,รายละเอียดแบนเนอร์ (ภาษาไทย)
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,description_en,TEXT,รายละเอียดแบนเนอร์ (ภาษาอังกฤษ)
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,image_url,TEXT,URL ของรูปภาพแบนเนอร์
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,created_by,VARCHAR(100),รหัสผู้สร้าง
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,updated_by,VARCHAR(100),รหัสผู้แก้ไขล่าสุด
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,created_at,TIMESTAMP,วันเวลาที่สร้าง
+title_banner_settings,ตั้งค่าแบนเนอร์ส่วนหัว,updated_at,TIMESTAMP,วันเวลาที่อัปเดตล่าสุด
+,,,,
+manual_setting,ตั้งค่าคู่มือการใช้งาน,id,SERIAL,รหัส ID ของตั้งค่าคู่มือ (Fix = 1 เสมอ)
+manual_setting,ตั้งค่าคู่มือการใช้งาน,remark,TEXT,หมายเหตุการตั้งค่าคู่มือ
+manual_setting,ตั้งค่าคู่มือการใช้งาน,updated_by,VARCHAR(100),รหัสผู้แก้ไขล่าสุด
+manual_setting,ตั้งค่าคู่มือการใช้งาน,updated_at,TIMESTAMP,วันเวลาที่อัปเดตล่าสุด
+,,,,
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,id,SERIAL,รหัส ID ของตั้งค่า (Fix = 1 เสมอ)
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,start_date,DATE,วันที่เริ่มปิดปรับปรุง
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,start_time,TIME,เวลาที่เริ่มปิดปรับปรุง
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,end_date,DATE,วันที่สิ้นสุดการปิดปรับปรุง
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,end_time,TIME,เวลาที่สิ้นสุดการปิดปรับปรุง
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,auto_close_service,SMALLINT,สถานะปิดบริการอัตโนมัติตามเวลา (1=เปิด 0=ปิด)
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,notify_admin,SMALLINT,สถานะแจ้งเตือนผู้ดูแลระบบ (1=เปิด 0=ปิด)
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,notify_admin_minutes,INTEGER,เวลาที่แจ้งเตือนล่วงหน้า (นาที)
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,is_indefinite,SMALLINT,สถานะไม่มีกำหนดเปิด (1=เปิด 0=ปิด)
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,remark,TEXT,ข้อความหรือเหตุผลการปิดปรับปรุง
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,updated_by,VARCHAR(100),รหัสผู้แก้ไขล่าสุด
+maintenance_settings,ตั้งค่าปิดปรับปรุงระบบ,updated_at,TIMESTAMP,วันเวลาที่อัปเดตล่าสุด
+,,,,
+system_services,บริการของระบบ,id,SERIAL,รหัส ID Service ระบบ (Auto Increment)
+system_services,บริการของระบบ,name,VARCHAR(255),ชื่อ Service (ระบบย่อย)
+system_services,บริการของระบบ,remark,TEXT,หมายเหตุของระบบ
+system_services,บริการของระบบ,permission_by_org,SMALLINT,อิงสิทธิ์จากหน่วยงาน (1=ใช้ 0=ไม่ใช้)
+system_services,บริการของระบบ,permission_by_role,SMALLINT,อิงสิทธิ์จากบทบาท (1=ใช้ 0=ไม่ใช้)
+system_services,บริการของระบบ,manage_external_permission,SMALLINT,สิทธิ์จัดการสิทธิ์ภายนอก (1=ใช้ 0=ไม่ใช้)
+system_services,บริการของระบบ,manage_system_service,SMALLINT,สิทธิ์จัดการ Service นี้ (1=ใช้ 0=ไม่ใช้)
+system_services,บริการของระบบ,view_change_history,SMALLINT,สิทธิ์ดูประวัติแก้ไข (1=ใช้ 0=ไม่ใช้)
+system_services,บริการของระบบ,is_active,SMALLINT,สถานะการใช้งาน (1=ใช้งาน 0=ปิด)
+system_services,บริการของระบบ,deleted_at,TIMESTAMP,วันเวลาที่ถูกลบ (Soft delete)
+system_services,บริการของระบบ,created_by,VARCHAR(100),รหัสผู้สร้าง
+system_services,บริการของระบบ,updated_by,VARCHAR(100),รหัสผู้แก้ไขล่าสุด
+system_services,บริการของระบบ,deleted_by,VARCHAR(100),รหัสผู้ลบ
+system_services,บริการของระบบ,created_at,TIMESTAMP,วันเวลาที่สร้าง
+system_services,บริการของระบบ,updated_at,TIMESTAMP,วันเวลาที่อัปเดตล่าสุด

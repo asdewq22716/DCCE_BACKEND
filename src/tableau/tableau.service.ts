@@ -14,6 +14,7 @@ export class TableauService extends BaseApiService {
     super(httpService);
   }
 
+
   async getTrustedUrl(dto: GetTableauTicketDto): Promise<{ success: boolean; name: string; url: string }> {
     const { reportCode, username: dtoUsername } = dto;
 

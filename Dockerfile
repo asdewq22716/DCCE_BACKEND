@@ -7,6 +7,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
+# Force cache bust on every deploy (Easy Panel: pass --build-arg CACHEBUST=$(date +%s))
+ARG CACHEBUST=1
+RUN echo "Cache bust: $CACHEBUST"
+
 # Copy the rest of the application files
 COPY . .
 

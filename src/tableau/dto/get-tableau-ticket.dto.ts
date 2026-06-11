@@ -7,12 +7,22 @@ export type TableauReportCode = typeof TABLEAU_REPORT_CODES[number];
 
 // Mapping รหัส → Dashboard Path จริงใน Tableau
 export const TABLEAU_DASHBOARD_PATHS: Record<TableauReportCode, string> = {
-  REP01: '/views/REP01_/sheet0', // รายงานระบบติดตามการจัดการทรัพยากรน้ำ
-  REP02: '/views/REP02_/sheet0', // รายงานระบบติดตามการจัดเกษตร: ความมั่นคงทางอาหาร
-  REP03: '/views/REP03_/sheet0', // รายงานระบบติดตามการท่องเที่ยว
-  REP04: '/views/REP04_/sheet0', // รายงานระบบติดตามสาธารณสุข
-  REP05: '/views/REP05_/sheet0', // รายงานระบบติดตามทรัพยากรธรรมชาติ
-  REP06: '/views/REP06_/_V2',   // รายงานระบบติดตั้งถึงฐาน: ความมั่นคงของมนุษย์
+  REP01: '/views/REP01_/sheet0',
+  REP02: '/views/REP02_/sheet0',
+  REP03: '/views/REP03_/sheet0',
+  REP04: '/views/REP04_/sheet0',
+  REP05: '/views/REP05_/sheet0',
+  REP06: '/views/REP06_/_V2',
+};
+
+// Mapping รหัส → ชื่อภาษาไทย
+export const TABLEAU_DASHBOARD_NAMES: Record<TableauReportCode, string> = {
+  REP01: 'รายงานระบบติดตามการจัดการทรัพยากรน้ำ',
+  REP02: 'รายงานระบบติดตามการจัดเกษตร/ความมั่นคงทางอาหาร',
+  REP03: 'รายงานระบบติดตามการท่องเที่ยว',
+  REP04: 'รายงานระบบติดตามสาธารณสุข',
+  REP05: 'รายงานระบบติดตามการจัดการทรัพยากรธรรมชาติ',
+  REP06: 'รายงานระบบติดตามการตั้งถิ่นฐาน/ความมั่นคงของมนุษย์',
 };
 
 export class GetTableauTicketDto {

@@ -8,8 +8,24 @@ import { TABLEAU_REPORT_CODES } from './dto/get-tableau-ticket.dto';
 export class TableauController {
   constructor(private readonly tableauService: TableauService) { }
 
-  // GET /tableau/dashboard/:reportCode
-  // Backend ขอ ticket เอง → คืน URL ที่ประกอบ token แล้วกลับไป
+  // GET /tableau/dashboards — ดึง URL ทุก dashboard พร้อมกันในครั้งเดียว
+  @Get('dashboards')
+  @ApiOperation({ summary: 'ดึง Tableau Dashboard URL ทั้งหมดพร้อม Token (call ครั้งเดียวได้ทุก dashboard)' })
+  @ApiResponse({
+    status: 200,
+    description: 'URL พร้อม token ของทุก dashboard',
+    schema: {
+      example: {
+        REP01: { url: 'http://192.168.65.58/trusted/xxx/views/REP01_/sheet0', path: '/views/REP01_/sheet0' },
+        REP02: { url: 'http://192.168.65.58/trusted/xxx/views/REP02_/sheet0', path: '/views/REP02_/sheet0' },
+      },
+    },
+  })
+  async getAllDashboards() {
+    return await this.tableauService.getAllDashboardUrls();
+  }
+
+  // GET /tableau/dashboard/:reportCode — ดึง URL เฉพาะ dashboard เดียว
   @Get('dashboard/:reportCode')
   @ApiOperation({ summary: 'ขอ Tableau Dashboard URL พร้อม Trusted Token (Frontend เอาไปเปิดใน iframe)' })
   @ApiParam({
@@ -39,4 +55,3 @@ export class TableauController {
     return await this.tableauService.getTrustedUrl({ reportCode: reportCode as any });
   }
 }
-

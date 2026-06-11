@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { BaseApiService } from '../common/services/base-api.service';
 import { HttpService } from '@nestjs/axios';
 import * as https from 'https';
-import { GetTableauTicketDto, TABLEAU_DASHBOARD_PATHS } from './dto/get-tableau-ticket.dto';
+import { GetTableauTicketDto, TABLEAU_DASHBOARD_NAMES, TABLEAU_DASHBOARD_PATHS, TABLEAU_REPORT_CODES, TableauReportCode } from './dto/get-tableau-ticket.dto';
 
 @Injectable()
 export class TableauService extends BaseApiService {
@@ -14,7 +14,7 @@ export class TableauService extends BaseApiService {
     super(httpService);
   }
 
-  async getTrustedUrl(dto: GetTableauTicketDto): Promise<{ success: boolean; url: string }> {
+  async getTrustedUrl(dto: GetTableauTicketDto): Promise<{ success: boolean; name: string; url: string }> {
     const { reportCode, username: dtoUsername } = dto;
 
     const tableauServerUrl = this.configService.get<string>('TABLEAU_SERVER_URL');
@@ -58,7 +58,7 @@ export class TableauService extends BaseApiService {
       const finalUrl = `${tableauServerUrl}/trusted/${ticket.trim()}${dashboardPath}`;
       this.logger.log(`Final Tableau URL: ${finalUrl}`);
 
-      return { success: true, url: finalUrl };
+      return { success: true, name: TABLEAU_DASHBOARD_NAMES[reportCode], url: finalUrl };
 
     } catch (error: unknown) {
       const err = error as Error;
@@ -68,5 +68,27 @@ export class TableauService extends BaseApiService {
 
       throw new HttpException('Failed to connect to Tableau Server', HttpStatus.BAD_GATEWAY);
     }
+  }
+  // GET /tableau/dashboards — ดึง URL ทุก dashboard พร้อมกันในครั้งเดียว
+  async getAllDashboardUrls(): Promise<Record<TableauReportCode, { url: string; path: string }>> {
+    const results = await Promise.allSettled(
+      TABLEAU_REPORT_CODES.map(async (code) => {
+        const result = await this.getTrustedUrl({ reportCode: code });
+        return { code, name: TABLEAU_DASHBOARD_NAMES[code], url: result.url, path: TABLEAU_DASHBOARD_PATHS[code] };
+      })
+    );
+
+    const dashboards: Partial<Record<TableauReportCode, { name: string; url: string; path: string }>> = {};
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        dashboards[result.value.code] = {
+          name: result.value.name,
+          url: result.value.url,
+          path: result.value.path,
+        };
+      }
+    }
+
+    return dashboards as Record<TableauReportCode, { name: string; url: string; path: string }>;
   }
 }

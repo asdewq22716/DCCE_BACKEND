@@ -14,10 +14,12 @@ export class TableauService extends BaseApiService {
     super(httpService);
   }
 
+
   async getTrustedUrl(dto: GetTableauTicketDto): Promise<{ success: boolean; name: string; url: string }> {
     const { reportCode, username: dtoUsername } = dto;
 
     const tableauServerUrl = this.configService.get<string>('TABLEAU_SERVER_URL');
+    const tableauServerView = this.configService.get<string>('TABLEAU_SERVER_VIEW') || tableauServerUrl;
     // ใช้ username จาก DTO ถ้ามี ไม่งั้นดึงจาก env
     const username = dtoUsername || this.configService.get<string>('TABLEAU_USERNAME');
 
@@ -55,7 +57,7 @@ export class TableauService extends BaseApiService {
         );
       }
 
-      const finalUrl = `${tableauServerUrl}/trusted/${ticket.trim()}${dashboardPath}`;
+      const finalUrl = `${tableauServerView}/trusted/${ticket.trim()}${dashboardPath}`;
       this.logger.log(`Final Tableau URL: ${finalUrl}`);
 
       return { success: true, name: TABLEAU_DASHBOARD_NAMES[reportCode], url: finalUrl };

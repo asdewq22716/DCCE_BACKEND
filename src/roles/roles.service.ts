@@ -20,7 +20,7 @@ export class RolesService {
   constructor(
     private readonly db: FncDB,
     private readonly auditLog: AuditLogService,
-  ) {}
+  ) { }
 
   // 1. สร้างบทบาทใหม่
   async create(dto: CreateRoleDto, context?: AuditContext) {
@@ -316,15 +316,15 @@ export class RolesService {
           actionType: 'UPDATE',
           moduleName: 'role_permissions',
           recordId: roleId.toString(),
-          oldData: { 
-            permissionIds: oldPermissionsData.permissionIds, 
-            role_status: role.role_status, 
-            role_remark: role.role_remark 
+          oldData: {
+            permissionIds: oldPermissionsData.permissionIds,
+            role_status: role.role_status,
+            role_remark: role.role_remark
           },
-          newData: { 
-            permissionIds: dto.permissionIds, 
+          newData: {
+            permissionIds: dto.permissionIds,
             role_status: dto.role_status !== undefined ? dto.role_status : role.role_status,
-            role_remark: dto.role_remark !== undefined ? dto.role_remark : role.role_remark 
+            role_remark: dto.role_remark !== undefined ? dto.role_remark : role.role_remark
           },
           remark: `แก้ไขการผูกสิทธิ์และสถานะ สำหรับบทบาท "${role.role_name}" (สิทธิ์ใหม่: ${dto.permissionIds.length} รายการ)`,
         },

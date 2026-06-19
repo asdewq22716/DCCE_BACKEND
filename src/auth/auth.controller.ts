@@ -7,7 +7,7 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -93,10 +93,26 @@ export class AuthController {
     return { message: 'Logged out successfully' };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile and effective permissions' })
   async getProfile(@Req() req: any) {
+    if (!req.user) {
+      // กรณีไม่ได้ Login (เป็นบุคคลภายนอก)
+      const externalPermissions = await this.permissionsService.getPermissionsByRoleId(6);
+      return {
+        user: null,
+        roles: [{ role_id: 6, role_name: 'EXTERNAL_USER' }],
+        organizations: [],
+        permissions: {
+          permission_status: 1,
+          permission_remark: null,
+          global_permissions: externalPermissions,
+          organizations: []
+        }
+      };
+    }
+
     const userId = req.user.userId;
     const { user, roles, organizations } = await this.usersService.getUserById(userId);
     const permissions = await this.permissionsService.getEffectivePermissions(userId);

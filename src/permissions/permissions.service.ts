@@ -48,19 +48,30 @@ export class PermissionsService {
   async syncPermissions(dto: SyncPermissionsDto, context: AuditContext) {
     const client = await this.db.startTransaction();
     try {
-      // 1. จัดการการลบ (Soft Delete) ก่อน
+      // 1. จัดการการลบ (Hard Delete) ก่อน
       if (dto.deleted_groups && dto.deleted_groups.length > 0) {
         for (const id of dto.deleted_groups) {
+          // ลบข้อมูลความสัมพันธ์ของสิทธิ์ในกลุ่มนี้จากตารางอื่นๆ เพื่อป้องกัน Foreign Key Error
+          await this.db.queryTx(client, 'DELETE FROM role_permissions WHERE permission_id IN (SELECT permission_id FROM permissions WHERE group_id = $1)', [id]);
+          await this.db.queryTx(client, 'DELETE FROM user_permissions WHERE permission_id IN (SELECT permission_id FROM permissions WHERE group_id = $1)', [id]);
+          await this.db.queryTx(client, 'DELETE FROM organization_permissions WHERE permission_id IN (SELECT permission_id FROM permissions WHERE group_id = $1)', [id]);
+          
+          // ลบสิทธิ์ลูกที่อยู่ในกลุ่มนี้
+          await this.db.queryTx(client, 'DELETE FROM permissions WHERE group_id = $1', [id]);
           // ลบกลุ่มหลัก
-          await this.db.update('permission_groups', { is_active: 0 }, { group_id: id }, client);
-          // ลบสิทธิ์ลูกที่อยู่ในกลุ่มนี้ (Cascade แบบง่าย 1 ชั้น)
-          await this.db.update('permissions', { is_active: 0 }, { group_id: id }, client);
+          await this.db.queryTx(client, 'DELETE FROM permission_groups WHERE group_id = $1', [id]);
         }
       }
 
       if (dto.deleted_permissions && dto.deleted_permissions.length > 0) {
         for (const id of dto.deleted_permissions) {
-          await this.db.update('permissions', { is_active: 0 }, { permission_id: id }, client);
+          // ลบข้อมูลความสัมพันธ์ของสิทธิ์นี้จากตารางอื่นๆ เพื่อป้องกัน Foreign Key Error
+          await this.db.queryTx(client, 'DELETE FROM role_permissions WHERE permission_id = $1', [id]);
+          await this.db.queryTx(client, 'DELETE FROM user_permissions WHERE permission_id = $1', [id]);
+          await this.db.queryTx(client, 'DELETE FROM organization_permissions WHERE permission_id = $1', [id]);
+
+          // ลบสิทธิ์หลัก
+          await this.db.queryTx(client, 'DELETE FROM permissions WHERE permission_id = $1', [id]);
         }
       }
 
@@ -379,5 +390,16 @@ export class PermissionsService {
       global_permissions: globalPermissions,
       organizations: organizations,
     };
+  }
+
+  async getPermissionsByRoleId(roleId: number) {
+    const result = await this.db.query(
+      `SELECT p.p_key 
+       FROM role_permissions rp 
+       JOIN permissions p ON rp.permission_id = p.permission_id 
+       WHERE rp.role_id = $1 AND p.is_active = 1`,
+      [roleId]
+    );
+    return result.map((r: any) => r.p_key);
   }
 }

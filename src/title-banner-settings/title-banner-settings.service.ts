@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { FncDB } from '../common/services/fnc-db.service';
 import { AuditLogService } from '../common/services/audit-log.service';
+import { UploadsService } from '../uploads/uploads.service';
 import { CreateTitleBannerSettingDto } from './dto/create-title-banner-setting.dto';
 import { UpdateTitleBannerSettingDto } from './dto/update-title-banner-setting.dto';
 
@@ -10,6 +11,7 @@ export class TitleBannerSettingsService {
 
   constructor(
     private readonly db: FncDB,
+    private readonly uploadsService: UploadsService,
     private readonly auditLogService: AuditLogService
   ) { }
 
@@ -27,6 +29,18 @@ export class TitleBannerSettingsService {
       };
 
       const setting = await this.db.insert('title_banner_settings', data, client);
+
+      // ผูกรูปภาพ
+      if (createDto.image_ids && createDto.image_ids.length > 0) {
+        await this.uploadsService.linkFiles({
+          uploadIds: createDto.image_ids,
+          refTable: 'title_banner_settings',
+          refId: setting.id,
+          tag: 'banner_image',
+          userId,
+          client
+        });
+      }
 
       await this.auditLogService.log(client, {
         actionType: 'CREATE',
@@ -48,18 +62,22 @@ export class TitleBannerSettingsService {
 
   async findAll() {
     const sql = `
-      SELECT *
-      FROM title_banner_settings
-      ORDER BY id ASC
+      SELECT 
+        t.*,
+        ${this.uploadsService.buildFilesSubquery('title_banner_settings', 't.id', 'banner_image')} AS images
+      FROM title_banner_settings t
+      ORDER BY t.id ASC
     `;
     return await this.db.query(sql);
   }
 
   async findOne(id: number) {
     const sql = `
-      SELECT *
-      FROM title_banner_settings
-      WHERE id = $1
+      SELECT 
+        t.*,
+        ${this.uploadsService.buildFilesSubquery('title_banner_settings', 't.id', 'banner_image')} AS images
+      FROM title_banner_settings t
+      WHERE t.id = $1
     `;
     const result = await this.db.query(sql, [id]);
 
@@ -87,6 +105,18 @@ export class TitleBannerSettingsService {
 
       if (Object.keys(data).length > 2) {
         await this.db.update('title_banner_settings', data, { id }, client);
+      }
+
+      // จัดการเชื่อมโยงรูปภาพ (Sync Files)
+      if (updateDto.image_ids) {
+        await this.uploadsService.syncFiles({
+          newUploadIds: updateDto.image_ids,
+          refTable: 'title_banner_settings',
+          refId: id,
+          tag: 'banner_image',
+          userId,
+          client
+        });
       }
 
       await this.auditLogService.log(client, {

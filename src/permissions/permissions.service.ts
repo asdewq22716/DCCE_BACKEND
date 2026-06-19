@@ -68,14 +68,13 @@ export class PermissionsService {
       const processGroup = async (group: SyncGroupDto, parentId: number | null) => {
         let currentGroupId = group.group_id;
 
-        // UPDATE ถ้ามี ID
+        // UPDATE ถ้ามี ID — ไม่แก้ parent_id เพื่อไม่ให้กลุ่มย่อยถูกย้ายขึ้น root
         if (currentGroupId) {
           await this.db.update(
             'permission_groups',
             {
               group_name: group.group_name,
               sort_order: group.sort_order || 0,
-              parent_id: parentId,
             },
             { group_id: currentGroupId },
             client,

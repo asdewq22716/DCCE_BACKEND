@@ -1,20 +1,34 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as https from 'https';
 import axios from 'axios';
 
 @Injectable()
 export class EFormService {
   private readonly baseUrl: string;
+  private readonly axiosConfig: any = {};
 
   constructor(private configService: ConfigService) {
-    this.baseUrl = this.configService.get<string>('EFORM_API_URL') || 'https://eform-adaptme.dcce.go.th';
+    let url = this.configService.get<string>('EFORM_API_URL') || 'https://eform-adaptme.dcce.go.th';
+    
+    // DNS bypass for Easypanel ENOTFOUND issue
+    if (url.includes('eform-adaptme.dcce.go.th')) {
+      url = url.replace('eform-adaptme.dcce.go.th', '167.179.250.18');
+      this.axiosConfig = {
+        headers: { 'Host': 'eform-adaptme.dcce.go.th' },
+        httpsAgent: new https.Agent({ rejectUnauthorized: false })
+      };
+    }
+    this.baseUrl = url;
   }
 
   async testLogin(body: any) {
     try {
       const url = `${this.baseUrl}/api/auth/login`;
       const response = await axios.post(url, body, {
+        ...this.axiosConfig,
         headers: {
+          ...this.axiosConfig.headers,
           'Content-Type': 'application/json',
         },
       });
@@ -37,7 +51,11 @@ export class EFormService {
         loginType: 'api',
       };
       const loginResponse = await axios.post(loginUrl, loginPayload, {
-        headers: { 'Content-Type': 'application/json' },
+        ...this.axiosConfig,
+        headers: { 
+          ...this.axiosConfig.headers,
+          'Content-Type': 'application/json' 
+        },
       });
 
       console.log("=== Login Response Data ===");
@@ -55,7 +73,9 @@ export class EFormService {
       // 2. Fetch Answers
       const answersUrl = `${this.baseUrl}/api/answers/`;
       const answersResponse = await axios.get(answersUrl, {
+        ...this.axiosConfig,
         headers: {
+          ...this.axiosConfig.headers,
           'Authorization': `Bearer ${token}`
         }
       });

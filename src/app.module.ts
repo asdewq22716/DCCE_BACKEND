@@ -28,6 +28,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { SystemServicesModule } from './system-services/system-services.module';
+import { EFormModule } from './e-form/e-form.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { SystemServicesModule } from './system-services/system-services.module';
     ApiRequestsModule,
     MaintenanceModule,
     SystemServicesModule,
+    EFormModule,
   ],
   controllers: [AppController],
   providers: [AppService],

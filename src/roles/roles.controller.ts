@@ -23,6 +23,7 @@ import { FncCustom } from 'src/common/fnc-custom';
 @UseGuards(JwtAuthGuard)
 @Controller('roles')
 export class RolesController {
+
   constructor(private readonly rolesService: RolesService) {}
 
   @Post()

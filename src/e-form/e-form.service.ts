@@ -71,7 +71,7 @@ export class EFormService {
       }
 
       // 2. Fetch Answers
-      const answersUrl = `${this.baseUrl}/api/answers/`;
+      const answersUrl = `${this.baseUrl}/api/answers`;
       const answersResponse = await axios.get(answersUrl, {
         ...this.axiosConfig,
         headers: {

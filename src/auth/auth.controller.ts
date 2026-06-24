@@ -45,8 +45,8 @@ export class AuthController {
     res.cookie('access_token', token, { 
       httpOnly: true, 
       path: '/',
-      secure: true,
-      sameSite: 'none' 
+      secure: false,
+      sameSite: 'lax' 
     });
     return {
       user: user,
@@ -72,8 +72,8 @@ export class AuthController {
     res.cookie('access_token', token, { 
       httpOnly: true,
       path: '/',
-      secure: true,
-      sameSite: 'none'
+      secure: false,
+      sameSite: 'lax'
     });
     return {
       user: user,
@@ -87,8 +87,8 @@ export class AuthController {
   async logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token', {
       path: '/',
-      secure: true,
-      sameSite: 'none'
+      secure: false,
+      sameSite: 'lax'
     });
     return { message: 'Logged out successfully' };
   }

@@ -8,26 +8,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
         (request: any) => {
           console.log('--- JWT Strategy Debug ---');
-          console.log('Cookies:', request?.cookies);
           console.log('Auth Header:', request?.headers?.authorization);
-
-          // ถ้าเป็นเส้น /auth/me ให้อ่านจาก Bearer Header อย่างเดียว (ไม่อ่านจาก Cookie)
-          if (request?.path?.endsWith('/auth/me')) {
-            console.log('Skipping cookie for /auth/me route. Trying Bearer token...');
-            return null;
-          }
+          console.log('Cookies:', request?.cookies);
 
           const data = request?.cookies?.['access_token'];
           if (!data) {
-            console.log('No access_token cookie found. Trying Bearer token...');
+            console.log('No access_token cookie found either.');
             return null;
           }
           console.log('Found access_token cookie:', data.substring(0, 20) + '...');
           return data;
         },
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
       // 2. ใช้ Secret Key ตัวเดียวกับตอน Sign Token

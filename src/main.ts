@@ -30,6 +30,7 @@ async function bootstrap() {
     .addServer('https://dcce-dcce-backend.1gusxl.easypanel.host', 'Production Direct (EasyPanel)')
     .addServer('http://localhost:4721', 'Local Development')
     .addBearerAuth()
+    .addSecurityRequirements('bearer')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);

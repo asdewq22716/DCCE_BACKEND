@@ -113,6 +113,124 @@ export class ApiRequestsService {
     };
   }
 
+
+  async findAllBackoffice(query: ApiRequestQueryDto, userId: string) {
+    // 1. จัดการหน้า (Pagination)
+    const page = query.page && query.page > 0 ? query.page : 1;
+    const limit = query.limit && query.limit > 0 ? query.limit : 10;
+    const offset = (page - 1) * limit;
+
+    // 2. จัดเตรียมเงื่อนไขการค้นหาพื้นฐาน (Filter by Form Data)
+    const status = this.db.escape(query.status);
+    const branch_id = query.branch_id;
+    const division_id = query.division_id;
+    const start_date = this.db.escape(query.start_date);
+    const end_date = this.db.escape(query.end_date);
+
+    const where: any[] = [
+      { fill: 'r.is_active = 1' },
+      { if: status, fill: `r.status = '${status}'` },
+      { if: branch_id !== undefined, fill: `r.branch_id = ${branch_id}` },
+      { if: division_id !== undefined, fill: `r.division_id = ${division_id}` },
+      { if: start_date, fill: `r.created_at >= '${start_date} 00:00:00'` },
+      { if: end_date, fill: `r.created_at <= '${end_date} 23:59:59'` },
+    ];
+
+    // 3. ตรวจสอบสิทธิ์ (RBAC Filtering)
+    const emptyResult = {
+      data: [],
+      meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
+    };
+
+    // หากไม่ได้ Login (Anonymous) ให้เด้งออกทันที (ไม่ให้เห็นข้อมูล)
+    if (userId === 'anonymous') return emptyResult;
+
+    // ดึงสิทธิ์ของ User ปัจจุบัน
+    const uId = parseInt(userId, 10);
+    const roleSql = `SELECT role_id FROM user_roles WHERE user_id = $1`;
+    const roles = await this.db.query(roleSql, [uId.toString()]);
+    const roleIds = roles.map((r: any) => parseInt(r.role_id, 10));
+
+    const isAdmin = roleIds.includes(1);
+    const isSuperUser = roleIds.includes(2);
+
+    if (isAdmin) {
+      // [Role 1: Admin] สามารถมองเห็นข้อมูลได้ทั้งหมด (ผ่านฉลุย ไม่ต้องเพิ่มเงื่อนไข)
+    } 
+    else if (isSuperUser) {
+      // [Role 2: Super User] มองเห็นเฉพาะข้อมูลขององค์กรหลักของตัวเอง
+      const orgSql = `SELECT org_id FROM user_organizations WHERE user_id = $1 AND is_primary = 1`;
+      const orgs = await this.db.query(orgSql, [uId.toString()]);
+      
+      // ถ้าไม่มีองค์กรหลัก คืนค่าตารางว่างกลับไปทันที
+      if (orgs.length === 0) return emptyResult;
+
+      const orgId = orgs[0].org_id;
+      where.push({ fill: `(r.branch_id = ${orgId} OR r.division_id = ${orgId})` });
+    } 
+    else {
+      // [Role อื่นๆ] ไม่อนุญาตให้มองเห็นข้อมูลในส่วนหลังบ้าน เด้งออกทันที
+      return emptyResult;
+    }
+
+    // 5. Query ข้อมูล
+    const fromAndJoins = `
+      FROM api_requests r
+      LEFT JOIN server_ips s ON r.server_ip_id = s.id
+      LEFT JOIN organizations b ON r.branch_id = b.org_id
+      LEFT JOIN organizations d ON r.division_id = d.org_id
+    `;
+
+    const selectCount = `SELECT COUNT(*)::int as total ${fromAndJoins}`;
+    const totalResult = await this.db.queryBuilder({ select: selectCount, where });
+    const totalItems = totalResult[0]?.total || 0;
+
+    const selectData = `
+      SELECT 
+        r.*,
+        s.ip_address AS server_ip_address,
+        b.org_name AS branch_name,
+        d.org_name AS division_name
+      ${fromAndJoins}
+    `;
+
+    const items = await this.db.queryBuilder({
+      select: selectData,
+      where,
+      orderBy: 'r.created_at DESC',
+      limit,
+      offset,
+    });
+
+    if (items.length > 0) {
+      const itemIds = items.map((item: any) => item.id.toString());
+      const placeholders = itemIds.map((_, i) => `$${i + 1}`).join(',');
+
+      const logsSql = `
+        SELECT al.*, a.ref_id
+        FROM approval_logs al
+        JOIN approvals a ON al.approval_id = a.id
+        WHERE a.ref_table = 'api_requests' AND a.ref_id IN (${placeholders})
+        ORDER BY al.created_at ASC
+      `;
+      const allLogs = await this.db.query(logsSql, itemIds);
+
+      items.forEach((item: any) => {
+        item.approval_logs = allLogs.filter((log: any) => log.ref_id === item.id.toString());
+      });
+    }
+
+    return {
+      data: items,
+      meta: {
+        totalItems,
+        itemCount: items.length,
+        itemsPerPage: limit,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+      },
+    };
+  }
   async findOne(id: number) {
     const selectData = `
       SELECT 

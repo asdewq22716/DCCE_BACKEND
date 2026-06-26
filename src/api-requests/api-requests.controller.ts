@@ -19,6 +19,13 @@ export class ApiRequestsController {
     return this.apiRequestsService.findAll(query);
   }
 
+  @Get('backoffice')
+  @ApiOperation({ summary: 'ดึงรายการคำขอใช้งาน API (สำหรับหลังบ้าน - เฉพาะ Admin และ SuperUser)' })
+  findAllBackoffice(@Query() query: ApiRequestQueryDto, @Req() req: any) {
+    const userId = req.user?.userId || 'anonymous';
+    return this.apiRequestsService.findAllBackoffice(query, userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'ดึงรายละเอียดคำขอใช้งาน API ตาม ID' })
   findOne(@Param('id', ParseIntPipe) id: number) {

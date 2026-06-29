@@ -26,7 +26,7 @@ export class ApiRequestsController {
     return this.apiRequestsService.findAllBackoffice(query, userId);
   }
 
-  @Get(':id')
+  @Get(':id(\\d+)')
   @ApiOperation({ summary: 'ดึงรายละเอียดคำขอใช้งาน API ตาม ID' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.apiRequestsService.findOne(id);

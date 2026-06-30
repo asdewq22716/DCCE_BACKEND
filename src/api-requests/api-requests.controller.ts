@@ -13,12 +13,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class ApiRequestsController {
   constructor(private readonly apiRequestsService: ApiRequestsService) { }
 
-  @Get()
-  @ApiOperation({ summary: 'ดึงรายการคำขอใช้งาน API ทั้งหมด (พร้อมฟิลเตอร์และการแบ่งหน้า)' })
-  findAll(@Query() query: ApiRequestQueryDto) {
-    return this.apiRequestsService.findAll(query);
-  }
-
   @Get('backoffice')
   @ApiOperation({ summary: 'ดึงรายการคำขอใช้งาน API (สำหรับหลังบ้าน - เฉพาะ Admin และ SuperUser)' })
   findAllBackoffice(@Query() query: ApiRequestQueryDto, @Req() req: any) {
@@ -26,7 +20,13 @@ export class ApiRequestsController {
     return this.apiRequestsService.findAllBackoffice(query, userId);
   }
 
-  @Get(':id(\\d+)')
+  @Get()
+  @ApiOperation({ summary: 'ดึงรายการคำขอใช้งาน API ทั้งหมด (พร้อมฟิลเตอร์และการแบ่งหน้า)' })
+  findAll(@Query() query: ApiRequestQueryDto) {
+    return this.apiRequestsService.findAll(query);
+  }
+
+  @Get(':id')
   @ApiOperation({ summary: 'ดึงรายละเอียดคำขอใช้งาน API ตาม ID' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.apiRequestsService.findOne(id);

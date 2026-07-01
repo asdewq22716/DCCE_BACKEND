@@ -156,18 +156,18 @@ export class ApiRequestsService {
 
     if (isAdmin) {
       // [Role 1: Admin] สามารถมองเห็นข้อมูลได้ทั้งหมด (ผ่านฉลุย ไม่ต้องเพิ่มเงื่อนไข)
-    } 
+    }
     else if (isSuperUser) {
       // [Role 2: Super User] มองเห็นเฉพาะข้อมูลขององค์กรหลักของตัวเอง
       const orgSql = `SELECT org_id FROM user_organizations WHERE user_id = $1 AND is_primary = 1`;
       const orgs = await this.db.query(orgSql, [uId.toString()]);
-      
+
       // ถ้าไม่มีองค์กรหลัก คืนค่าตารางว่างกลับไปทันที
       if (orgs.length === 0) return emptyResult;
 
       const orgId = orgs[0].org_id;
       where.push({ fill: `(r.branch_id = ${orgId} OR r.division_id = ${orgId})` });
-    } 
+    }
     else {
       // [Role อื่นๆ] ไม่อนุญาตให้มองเห็นข้อมูลในส่วนหลังบ้าน เด้งออกทันที
       return emptyResult;
@@ -331,7 +331,7 @@ export class ApiRequestsService {
           environment: newItem.environment,
           objective_text: newItem.objective_text
         },
-        required_role: 'super_admin', // ใครเป็น super_admin ก็สามารถอนุมัติได้
+        required_role: 'admin', // ใครเป็น admin ก็สามารถอนุมัติได้
         requester_id: userId
       }, client);
 

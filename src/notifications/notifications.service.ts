@@ -25,6 +25,7 @@ export class NotificationsService {
         target_role: dto.target_role || null,
         target_user_id: dto.target_user_id || null,
         is_read: 0,
+        created_at: new Date(),
       };
 
       if (clientTx) {

@@ -9,6 +9,8 @@ import {
 
 import cookieParser from 'cookie-parser';
 
+process.env.TZ = 'Asia/Bangkok';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

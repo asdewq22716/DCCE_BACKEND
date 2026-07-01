@@ -13,7 +13,7 @@ export class NotificationsService {
    */
   async createNotification(dto: CreateNotificationDto, clientTx?: any) {
     try {
-      const data: any = {
+      const baseData: any = {
         title: dto.title,
         message: dto.message || null,
         type: dto.type || 'INFO',
@@ -22,16 +22,51 @@ export class NotificationsService {
         ref_table: dto.ref_table || null,
         ref_id: dto.ref_id || null,
         sender_id: dto.sender_id || 'system',
-        target_role: dto.target_role || null,
-        target_user_id: dto.target_user_id || null,
         is_read: 0,
         created_at: new Date(),
       };
 
-      if (clientTx) {
-        return await this.db.insert('notifications', data, clientTx);
+      const targets: string[] = [];
+
+      // 1. ถ้ามีการระบุ User เจาะจง
+      if (dto.target_user_id) {
+        targets.push(dto.target_user_id);
+      }
+
+      // 2. ถ้ามีการระบุ Role ให้ไปดึง user_id ทั้งหมดที่มี Role นั้นมา
+      if (dto.target_role) {
+        const sql = `
+          SELECT ur.user_id 
+          FROM user_roles ur
+          JOIN roles r ON ur.role_id = r.role_id
+          WHERE r.role_name = $1
+        `;
+        const users = clientTx ? await this.db.queryTx(clientTx, sql, [dto.target_role]) : await this.db.query(sql, [dto.target_role]);
+        for (const u of users) {
+          if (!targets.includes(u.user_id.toString())) {
+            targets.push(u.user_id.toString());
+          }
+        }
+      }
+
+      // 3. วนลูป Insert ทีละคน (Fan-out)
+      if (targets.length > 0) {
+        for (const userId of targets) {
+          const data = { ...baseData, target_user_id: userId, target_role: null };
+          if (clientTx) {
+            await this.db.insert('notifications', data, clientTx);
+          } else {
+            await this.db.insert('notifications', data);
+          }
+        }
       } else {
-        return await this.db.insert('notifications', data);
+        // กรณีไม่มีเป้าหมายเลย อาจจะเกิดจาก Role นั้นไม่มีคนอยู่
+        const data = { ...baseData, target_user_id: null, target_role: dto.target_role || null };
+        if (clientTx) {
+          await this.db.insert('notifications', data, clientTx);
+        } else {
+          await this.db.insert('notifications', data);
+        }
       }
     } catch (error: any) {
       this.logger.error(`Failed to create notification: ${error.message}`, error.stack);
@@ -41,14 +76,13 @@ export class NotificationsService {
 
   /**
    * ดึงการแจ้งเตือนทั้งหมดของผู้ใช้งานปัจจุบัน
-   * โดยเช็คจาก userId และ role ของ user
+   * โดยเช็คจาก userId เป็นหลัก (เนื่องจากกระจายมาจาก Role แล้ว)
    */
   async getMyNotifications(userId: string, roleName: string) {
-    // ดึง Noti ที่เจาะจงถึงตัวเอง หรือ เจาะจงถึงกลุ่มตัวเอง
     const sql = `
       SELECT * FROM notifications 
       WHERE target_user_id = $1 
-         OR target_role = $2 
+         OR target_role = $2
       ORDER BY created_at DESC 
       LIMIT 50
     `;

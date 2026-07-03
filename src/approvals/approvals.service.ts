@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { FncDB } from '../common/services/fnc-db.service';
+import { v4 as uuidv4 } from 'uuid';
 import { CreateApprovalDto, ActionApprovalDto } from './dto/approval.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -143,9 +144,26 @@ export class ApprovalsService {
     try {
       if (refTable === 'api_requests') {
         // อัปเดตสถานะในตาราง api_requests
-        const sql = `UPDATE api_requests SET status = $1 WHERE id = $2`;
-        await this.db.query(sql, [finalStatus, refId]);
+        const sql = `UPDATE api_requests SET status = $1 WHERE id = $2 RETURNING request_id`;
+        const result = await this.db.query(sql, [finalStatus, refId]);
         this.logger.log(`Updated api_requests ID ${refId} to ${finalStatus}`);
+
+        // ถ้าสถานะเป็น approved ให้สร้าง API Token
+        if (finalStatus === 'approved' && result.length > 0) {
+          const requestId = result[0].request_id;
+          const token = uuidv4();
+          
+          // กำหนดวันหมดอายุ 1 ปีนับจากวันที่อนุมัติ (สามารถแก้ให้เป็น null ได้ถ้าไม่อยากให้หมดอายุ)
+          const expiredAt = new Date();
+          expiredAt.setFullYear(expiredAt.getFullYear() + 1);
+
+          await this.db.insert('api_tokens', {
+            request_id: requestId,
+            token: token,
+            expired_at: expiredAt
+          });
+          this.logger.log(`Generated API Token for request_id ${requestId}`);
+        }
       }
     } catch (error) {
       this.logger.error(`Error notifying source table ${refTable}:`, error);

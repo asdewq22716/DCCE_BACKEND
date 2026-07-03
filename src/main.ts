@@ -31,7 +31,16 @@ async function bootstrap() {
     .addServer('/api', 'Production via adaptme.dcce.go.th/api/')
     .addServer('https://dcce-dcce-backend.1gusxl.easypanel.host', 'Production Direct (EasyPanel)')
     .addServer('http://localhost:4721', 'Local Development')
-    .addBearerAuth()
+    .addBearerAuth() // สำหรับ JWT เดิม
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'x-api-key',
+        in: 'header',
+        description: 'กรอก API Token ที่ได้รับจากการอนุมัติที่นี่',
+      },
+      'api-key', // ชื่อ Scheme ต้องตรงกับ @ApiBearerAuth('api-key') หรือ @ApiSecurity('api-key') ใน Controller
+    )
     .addSecurityRequirements('bearer')
     .build();
   const document = SwaggerModule.createDocument(app, config);

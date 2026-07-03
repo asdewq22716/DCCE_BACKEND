@@ -5,6 +5,7 @@ import { CreateApiRequestDto } from './dto/create-api-request.dto';
 import { UpdateApiRequestDto, UpdateApiRequestStatusDto } from './dto/update-api-request.dto';
 import { ApiRequestQueryDto } from './dto/api-request-query.dto';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class ApiRequestsService {
@@ -428,6 +429,23 @@ export class ApiRequestsService {
 
       await this.db.update('api_requests', data, { id }, client);
       const updatedItem = { ...oldItem, ...data };
+
+      // ถ้าเป็นการอัปเดตสถานะเป็น approved ให้สร้าง API Token ด้วย (กรณีไม่มี approval inbox)
+      if (updateDto.status === 'approved') {
+        const token = uuidv4();
+        const expiredAt = new Date();
+        expiredAt.setFullYear(expiredAt.getFullYear() + 1);
+
+        await this.db.insert(
+          'api_tokens',
+          {
+            request_id: oldItem.request_id,
+            token: token,
+            expired_at: expiredAt
+          },
+          client
+        );
+      }
 
       await this.auditLogService.log(
         client,

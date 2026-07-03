@@ -29,6 +29,7 @@ import { join } from 'path';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { SystemServicesModule } from './system-services/system-services.module';
 import { EFormModule } from './e-form/e-form.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { EFormModule } from './e-form/e-form.module';
     MaintenanceModule,
     SystemServicesModule,
     EFormModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

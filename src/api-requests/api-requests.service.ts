@@ -82,11 +82,12 @@ export class ApiRequestsService {
       offset,
     });
 
-    // ดึง Approval Logs สำหรับทุกรายการใน List แบบ Batch เพื่อไม่ให้เกิด N+1 Query
+    // ดึง Approval Logs และ Audit Logs สำหรับทุกรายการใน List แบบ Batch
     if (items.length > 0) {
       const itemIds = items.map(item => item.id.toString());
       const placeholders = itemIds.map((_, i) => `$${i + 1}`).join(',');
 
+      // 1. Approval Logs
       const logsSql = `
         SELECT al.*, a.ref_id, u.full_name AS action_by_name
         FROM approval_logs al
@@ -97,9 +98,20 @@ export class ApiRequestsService {
       `;
       const allLogs = await this.db.query(logsSql, itemIds);
 
+      // 2. Audit Logs
+      const auditSql = `
+        SELECT a.log_id, a.action_type, a.created_at, a.created_by, a.remark, a.record_id, u.full_name AS action_by_name
+        FROM audit_logs a
+        LEFT JOIN users u ON a.created_by = u.user_id
+        WHERE a.module_name = 'api_requests' AND a.record_id IN (${placeholders})
+        ORDER BY a.created_at ASC
+      `;
+      const allAuditLogs = await this.db.query(auditSql, itemIds);
+
       // Map logs กลับไปใส่ในแต่ละ Item
       items.forEach(item => {
         item.approval_logs = allLogs.filter(log => log.ref_id === item.id.toString());
+        item.audit_logs = allAuditLogs.filter(log => log.record_id === item.id.toString());
       });
     }
 
@@ -212,6 +224,7 @@ export class ApiRequestsService {
       const itemIds = items.map((item: any) => item.id.toString());
       const placeholders = itemIds.map((_, i) => `$${i + 1}`).join(',');
 
+      // 1. Approval Logs
       const logsSql = `
         SELECT al.*, a.ref_id, u.full_name AS action_by_name
         FROM approval_logs al
@@ -222,8 +235,19 @@ export class ApiRequestsService {
       `;
       const allLogs = await this.db.query(logsSql, itemIds);
 
+      // 2. Audit Logs
+      const auditSql = `
+        SELECT a.log_id, a.action_type, a.created_at, a.created_by, a.remark, a.record_id, u.full_name AS action_by_name
+        FROM audit_logs a
+        LEFT JOIN users u ON a.created_by = u.user_id
+        WHERE a.module_name = 'api_requests' AND a.record_id IN (${placeholders})
+        ORDER BY a.created_at ASC
+      `;
+      const allAuditLogs = await this.db.query(auditSql, itemIds);
+
       items.forEach((item: any) => {
         item.approval_logs = allLogs.filter((log: any) => log.ref_id === item.id.toString());
+        item.audit_logs = allAuditLogs.filter((log: any) => log.record_id === item.id.toString());
       });
     }
 
@@ -262,7 +286,7 @@ export class ApiRequestsService {
 
     const requestData = items[0];
 
-    // ดึงประวัติการอนุมัติ (Approval Logs) พร้อมคอมเมนต์ของแอดมิน แนบกลับไปด้วย
+    // ดึงประวัติการอนุมัติ (Approval Logs)
     const logsSql = `
       SELECT al.*, u.full_name AS action_by_name 
       FROM approval_logs al
@@ -273,6 +297,17 @@ export class ApiRequestsService {
     `;
     const approvalLogs = await this.db.query(logsSql, [id.toString()]);
     requestData.approval_logs = approvalLogs;
+
+    // ดึงประวัติกิจกรรม (Audit Logs)
+    const auditSql = `
+      SELECT a.log_id, a.action_type, a.created_at, a.created_by, a.remark, a.record_id, u.full_name AS action_by_name
+      FROM audit_logs a
+      LEFT JOIN users u ON a.created_by = u.user_id
+      WHERE a.module_name = 'api_requests' AND a.record_id = $1
+      ORDER BY a.created_at DESC
+    `;
+    const auditLogs = await this.db.query(auditSql, [id.toString()]);
+    requestData.audit_logs = auditLogs;
 
     return requestData;
   }
@@ -426,6 +461,27 @@ export class ApiRequestsService {
       };
       await this.approvalsService.actionApproval(pendingTasks[0].id, { action, comment: updateDto.comment, extra_data: extraData }, userId);
 
+      // บันทึก Audit Log เพื่อให้ Timeline หน้าบ้านเห็นสเต็ปการอนุมัตินี้ด้วย
+      const client = await this.db.startTransaction();
+      try {
+        await this.auditLogService.log(
+          client,
+          {
+            actionType: 'STATUS_UPDATE',
+            moduleName: 'api_requests',
+            recordId: id.toString(),
+            oldData: oldItem,
+            newData: { ...oldItem, status: updateDto.status, start_date: updateDto.start_date, end_date: updateDto.end_date },
+            remark: updateDto.comment || (updateDto.status === 'approved' ? 'อนุมัติคำขอ' : 'ปฏิเสธคำขอ'),
+          },
+          { userId: parseInt(userId, 10) || 0 },
+        );
+        await this.db.commit(client);
+      } catch (err: any) {
+        await this.db.rollback(client);
+        this.logger.error(`Failed to create audit log: ${err.message}`);
+      }
+
       return {
         success: true,
         message: `บันทึกการอนุมัติเป็น ${updateDto.status} สำเร็จผ่านระบบ Approvals กลาง`,
@@ -472,17 +528,25 @@ export class ApiRequestsService {
           },
           client
         );
+      } else if (updateDto.status === 'rejected') {
+        // ถ้ายกเลิก/ระงับการใช้งาน ให้ไปปิดการใช้งาน API Token ทั้งหมดของคำขอนี้
+        await this.db.update(
+          'api_tokens',
+          { is_active: 0 },
+          { request_id: oldItem.request_id },
+          client
+        );
       }
 
       await this.auditLogService.log(
         client,
         {
-          actionType: 'UPDATE',
+          actionType: 'STATUS_UPDATE',
           moduleName: 'api_requests',
           recordId: id.toString(),
           oldData: oldItem,
           newData: updatedItem,
-          remark: `เปลี่ยนสถานะคำขอใช้งาน API เป็น ${updateDto.status}`,
+          remark: updateDto.comment || `เปลี่ยนสถานะคำขอใช้งาน API เป็น ${updateDto.status}`,
         },
         { userId: parseInt(userId, 10) || 0 },
       );

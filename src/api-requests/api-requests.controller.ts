@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Body, Param, Put, Patch, Delete, UseGuards, Req, Query, ParseIntPipe } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { ApiRequestsService } from './api-requests.service';
 import { CreateApiRequestDto } from './dto/create-api-request.dto';
 import { UpdateApiRequestDto, UpdateApiRequestStatusDto } from './dto/update-api-request.dto';
@@ -48,6 +48,29 @@ export class ApiRequestsController {
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'อัปเดตสถานะการอนุมัติ (pending, approved, rejected)' })
+  @ApiBody({
+    type: UpdateApiRequestStatusDto,
+    examples: {
+      approve: {
+        summary: '✅ อนุมัติ (Approve)',
+        description: 'ตัวอย่างการอนุมัติคำขอ (ระบบจะสร้าง API Token ให้โดยอัตโนมัติ)',
+        value: {
+          status: 'approved',
+          comment: 'อนุมัติให้ใช้งาน API ได้',
+          start_date: '2024-01-01',
+          end_date: '2024-12-31'
+        }
+      },
+      reject: {
+        summary: '❌ ไม่อนุมัติ (Reject)',
+        description: 'ตัวอย่างการปฏิเสธคำขอ (ไม่ต้องระบุวันที่)',
+        value: {
+          status: 'rejected',
+          comment: 'ไม่อนุมัติเนื่องจากระบุวัตถุประสงค์ไม่ชัดเจน'
+        }
+      }
+    }
+  })
   updateStatus(@Param('id', ParseIntPipe) id: number, @Body() updateDto: UpdateApiRequestStatusDto, @Req() req: any) {
     const userId = req.user?.userId || 'anonymous';
     return this.apiRequestsService.updateStatus(id, updateDto, userId);

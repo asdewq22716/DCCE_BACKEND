@@ -39,7 +39,7 @@ export class ApprovalsService {
       newApprovalId = result.id;
     }
 
-    // สร้างการแจ้งเตือน
+    // 2. สร้างการแจ้งเตือน
     await this.notificationsService.createNotification({
       title: `รออนุมัติ: ${dto.title}`,
       message: `มีรายการรออนุมัติใหม่จากระบบ ${dto.ref_table}`,
@@ -72,7 +72,7 @@ export class ApprovalsService {
   /**
    * ดำเนินการอนุมัติหรือไม่อนุมัติ (Action)
    */
-  async actionApproval(id: number, dto: ActionApprovalDto, userId: string) {
+  async  actionApproval(id: number, dto: ActionApprovalDto, userId: string) {
     // 1. ดึงข้อมูลคำขอ
     const sql = `SELECT * FROM approvals WHERE id = $1 FOR UPDATE`;
     const approval = await this.db.query(sql, [id]);
@@ -85,6 +85,13 @@ export class ApprovalsService {
 
     if (task.status !== 'pending') {
       throw new BadRequestException('รายการนี้ถูกดำเนินการไปแล้ว');
+    }
+
+    // Validation เพิ่มเติมสำหรับ api_requests (ถ้าอนุมัติ ต้องมี start_date)
+    if (task.ref_table === 'api_requests' && dto.action === 'approved') {
+      if (!dto.extra_data || !dto.extra_data.start_date) {
+        throw new BadRequestException('ต้องระบุวันที่เริ่มต้นใช้งาน (start_date)');
+      }
     }
 
     // 2. สร้าง Log
@@ -119,7 +126,7 @@ export class ApprovalsService {
 
     // 5. ถ้าผ่านทั้งหมด หรือถูกปฏิเสธ ให้แจ้งไปตารางต้นทาง (Router)
     if (newStatus !== 'pending') {
-      await this.notifySourceTable(task.ref_table, task.ref_id, newStatus);
+      await this.notifySourceTable(task.ref_table, task.ref_id, newStatus, dto.extra_data);
       
       // แจ้งเตือนกลับไปยังคนขอ (requester_id) ว่าผลเป็นยังไง
       await this.notificationsService.createNotification({
@@ -140,29 +147,42 @@ export class ApprovalsService {
   /**
    * แจ้งเตือนไปยังตารางต้นทางว่าสถานะการอนุมัติสิ้นสุดแล้ว
    */
-  private async notifySourceTable(refTable: string, refId: string, finalStatus: string) {
+  private async notifySourceTable(refTable: string, refId: string, finalStatus: string, extraData?: any) {
     try {
       if (refTable === 'api_requests') {
-        // อัปเดตสถานะในตาราง api_requests
-        const sql = `UPDATE api_requests SET status = $1 WHERE id = $2 RETURNING request_id`;
-        const result = await this.db.query(sql, [finalStatus, refId]);
-        this.logger.log(`Updated api_requests ID ${refId} to ${finalStatus}`);
+        // ดึงข้อมูลเดิมออกมาก่อน
+        const requestData = await this.db.select('api_requests', { id: refId });
+        
+        if (requestData && requestData.length > 0) {
+          const requestInfo = requestData[0];
 
-        // ถ้าสถานะเป็น approved ให้สร้าง API Token
-        if (finalStatus === 'approved' && result.length > 0) {
-          const requestId = result[0].request_id;
-          const token = uuidv4();
-          
-          // กำหนดวันหมดอายุ 1 ปีนับจากวันที่อนุมัติ (สามารถแก้ให้เป็น null ได้ถ้าไม่อยากให้หมดอายุ)
-          const expiredAt = new Date();
-          expiredAt.setFullYear(expiredAt.getFullYear() + 1);
+          // เตรียมข้อมูลสำหรับอัปเดต
+          const updateData: any = { status: finalStatus };
+          if (extraData?.start_date) updateData.start_date = extraData.start_date;
+          if (extraData?.end_date) updateData.end_date = extraData.end_date;
+
+          // อัปเดตข้อมูลด้วยฟังก์ชันของระบบ
+          await this.db.update('api_requests', updateData, { id: refId });
+          this.logger.log(`Updated api_requests ID ${refId} to ${finalStatus}`);
+
+          // ถ้าสถานะเป็น approved ให้สร้าง API Token
+          if (finalStatus === 'approved') {
+            const requestId = requestInfo.request_id;
+            const token = uuidv4();
+            
+            let expiredAt: Date | null = null;
+            // ใช้ end_date จาก admin ถ้าไม่ได้ระบุให้เป็น null (ไม่มีวันหมดอายุ)
+            if (extraData?.end_date) {
+              expiredAt = new Date(extraData.end_date);
+            }
 
           await this.db.insert('api_tokens', {
             request_id: requestId,
             token: token,
             expired_at: expiredAt
           });
-          this.logger.log(`Generated API Token for request_id ${requestId}`);
+          this.logger.log(`Generated API Token for request_id ${requestId} (Expires: ${expiredAt ? expiredAt.toISOString() : 'Never'})`);
+          }
         }
       }
     } catch (error) {

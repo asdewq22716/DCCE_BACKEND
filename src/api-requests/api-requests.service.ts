@@ -57,6 +57,7 @@ export class ApiRequestsService {
       LEFT JOIN server_ips s ON r.server_ip_id = s.id
       LEFT JOIN organizations b ON r.branch_id = b.org_id
       LEFT JOIN organizations d ON r.division_id = d.org_id
+      LEFT JOIN users u ON r.created_by = u.user_id
     `;
 
     const selectCount = `SELECT COUNT(*)::int as total ${fromAndJoins}`;
@@ -68,7 +69,8 @@ export class ApiRequestsService {
         r.*,
         s.ip_address AS server_ip_address,
         b.org_name AS branch_name,
-        d.org_name AS division_name
+        d.org_name AS division_name,
+        u.full_name AS requester_name
       ${fromAndJoins}
     `;
 
@@ -86,9 +88,10 @@ export class ApiRequestsService {
       const placeholders = itemIds.map((_, i) => `$${i + 1}`).join(',');
 
       const logsSql = `
-        SELECT al.*, a.ref_id
+        SELECT al.*, a.ref_id, u.full_name AS action_by_name
         FROM approval_logs al
         JOIN approvals a ON al.approval_id = a.id
+        LEFT JOIN users u ON al.action_by::text = u.user_id::text
         WHERE a.ref_table = 'api_requests' AND a.ref_id IN (${placeholders})
         ORDER BY al.created_at ASC
       `;
@@ -180,6 +183,7 @@ export class ApiRequestsService {
       LEFT JOIN server_ips s ON r.server_ip_id = s.id
       LEFT JOIN organizations b ON r.branch_id = b.org_id
       LEFT JOIN organizations d ON r.division_id = d.org_id
+      LEFT JOIN users u ON r.created_by = u.user_id
     `;
 
     const selectCount = `SELECT COUNT(*)::int as total ${fromAndJoins}`;
@@ -191,7 +195,8 @@ export class ApiRequestsService {
         r.*,
         s.ip_address AS server_ip_address,
         b.org_name AS branch_name,
-        d.org_name AS division_name
+        d.org_name AS division_name,
+        u.full_name AS requester_name
       ${fromAndJoins}
     `;
 
@@ -208,9 +213,10 @@ export class ApiRequestsService {
       const placeholders = itemIds.map((_, i) => `$${i + 1}`).join(',');
 
       const logsSql = `
-        SELECT al.*, a.ref_id
+        SELECT al.*, a.ref_id, u.full_name AS action_by_name
         FROM approval_logs al
         JOIN approvals a ON al.approval_id = a.id
+        LEFT JOIN users u ON al.action_by::text = u.user_id::text
         WHERE a.ref_table = 'api_requests' AND a.ref_id IN (${placeholders})
         ORDER BY al.created_at ASC
       `;
@@ -238,11 +244,13 @@ export class ApiRequestsService {
         r.*,
         s.ip_address AS server_ip_address,
         b.org_name AS branch_name,
-        d.org_name AS division_name
+        d.org_name AS division_name,
+        u.full_name AS requester_name
       FROM api_requests r
       LEFT JOIN server_ips s ON r.server_ip_id = s.id
       LEFT JOIN organizations b ON r.branch_id = b.org_id
       LEFT JOIN organizations d ON r.division_id = d.org_id
+      LEFT JOIN users u ON r.created_by = u.user_id
     `;
     const items = await this.db.queryBuilder({
       select: selectData,
@@ -256,9 +264,10 @@ export class ApiRequestsService {
 
     // ดึงประวัติการอนุมัติ (Approval Logs) พร้อมคอมเมนต์ของแอดมิน แนบกลับไปด้วย
     const logsSql = `
-      SELECT al.* 
+      SELECT al.*, u.full_name AS action_by_name 
       FROM approval_logs al
       JOIN approvals a ON al.approval_id = a.id
+      LEFT JOIN users u ON al.action_by::text = u.user_id::text
       WHERE a.ref_table = 'api_requests' AND a.ref_id = $1
       ORDER BY al.created_at DESC
     `;
@@ -306,6 +315,7 @@ export class ApiRequestsService {
       if (createDto.callback_url !== undefined) data.callback_url = createDto.callback_url;
       if (createDto.environment !== undefined) data.environment = createDto.environment;
       if (createDto.comment !== undefined) data.comment = createDto.comment;
+      if (createDto.request_days !== undefined) data.request_days = createDto.request_days;
 
       const newItem = await this.db.insert('api_requests', data, client);
 
@@ -366,6 +376,7 @@ export class ApiRequestsService {
       if (updateDto.callback_url !== undefined) data.callback_url = updateDto.callback_url;
       if (updateDto.environment !== undefined) data.environment = updateDto.environment;
       if (updateDto.comment !== undefined) data.comment = updateDto.comment;
+      if (updateDto.request_days !== undefined) data.request_days = updateDto.request_days;
 
       if (Object.keys(data).length === 0) {
         throw new BadRequestException('ไม่มีข้อมูลที่ต้องการอัปเดต');
@@ -409,23 +420,35 @@ export class ApiRequestsService {
     if (pendingTasks && pendingTasks.length > 0) {
       // 2. ถ้ามีงานใน Inbox ให้ไปใช้ระบบ Approvals จัดการแทน (ซึ่งมันจะกลับมาอัปเดต api_requests ให้อัตโนมัติ)
       const action = updateDto.status === 'approved' ? 'approved' : 'rejected';
-      await this.approvalsService.actionApproval(pendingTasks[0].id, { action, comment: updateDto.comment }, userId);
+      const extraData = {
+        start_date: updateDto.start_date,
+        end_date: updateDto.end_date
+      };
+      await this.approvalsService.actionApproval(pendingTasks[0].id, { action, comment: updateDto.comment, extra_data: extraData }, userId);
 
       return {
         success: true,
         message: `บันทึกการอนุมัติเป็น ${updateDto.status} สำเร็จผ่านระบบ Approvals กลาง`,
-        data: { ...oldItem, status: updateDto.status }
+        data: { ...oldItem, status: updateDto.status, start_date: updateDto.start_date, end_date: updateDto.end_date }
       };
     }
 
     // 3. Fallback: ถ้าไม่มีงานในตารางกลาง (เช่น เป็นข้อมูลเก่า) ให้อัปเดตตารางตรงๆ แบบเดิม
     const client = await this.db.startTransaction();
     try {
-      const data = {
+      // Validation: ถ้าอนุมัติ ต้องมี start_date
+      if (updateDto.status === 'approved' && !updateDto.start_date) {
+        throw new BadRequestException('ต้องระบุวันที่เริ่มต้นใช้งาน (start_date)');
+      }
+
+      const data: any = {
         status: updateDto.status,
         updated_at: new Date(),
         updated_by: parseInt(userId, 10) || 0,
       };
+
+      if (updateDto.start_date) data.start_date = updateDto.start_date;
+      if (updateDto.end_date) data.end_date = updateDto.end_date;
 
       await this.db.update('api_requests', data, { id }, client);
       const updatedItem = { ...oldItem, ...data };
@@ -433,8 +456,12 @@ export class ApiRequestsService {
       // ถ้าเป็นการอัปเดตสถานะเป็น approved ให้สร้าง API Token ด้วย (กรณีไม่มี approval inbox)
       if (updateDto.status === 'approved') {
         const token = uuidv4();
-        const expiredAt = new Date();
-        expiredAt.setFullYear(expiredAt.getFullYear() + 1);
+        let expiredAt: Date | null = null;
+
+        // ใช้ end_date จาก admin ถ้าไม่ได้ระบุให้เป็น null (ไม่มีวันหมดอายุ)
+        if (updateDto.end_date) {
+          expiredAt = new Date(updateDto.end_date);
+        }
 
         await this.db.insert(
           'api_tokens',

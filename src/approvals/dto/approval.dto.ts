@@ -12,4 +12,5 @@ export class CreateApprovalDto {
 export class ActionApprovalDto {
   action: 'approved' | 'rejected';
   comment?: string;
+  extra_data?: any;
 }

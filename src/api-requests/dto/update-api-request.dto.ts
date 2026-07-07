@@ -15,4 +15,14 @@ export class UpdateApiRequestStatusDto {
   @IsString()
   @IsOptional()
   comment?: string;
+
+  @ApiPropertyOptional({ description: 'วันที่เริ่มต้นใช้งาน API (แอดมินเป็นคนกรอกตอนอนุมัติ)' })
+  @IsString()
+  @IsOptional()
+  start_date?: string;
+
+  @ApiPropertyOptional({ description: 'วันที่สิ้นสุดการใช้งาน API (แอดมินเป็นคนกรอกตอนอนุมัติ)' })
+  @IsString()
+  @IsOptional()
+  end_date?: string;
 }

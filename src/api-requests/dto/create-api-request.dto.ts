@@ -77,4 +77,9 @@ export class CreateApiRequestDto {
   @IsString()
   @IsOptional()
   comment?: string;
+
+  @ApiPropertyOptional({ description: 'จำนวนวันที่ขอใช้งาน API' })
+  @IsNumber()
+  @IsOptional()
+  request_days?: number;
 }

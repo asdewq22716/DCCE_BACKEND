@@ -93,4 +93,54 @@ export class TableauService extends BaseApiService {
 
     return dashboards as Record<TableauReportCode, { name: string; url: string; path: string }>;
   }
+
+  // ดึง URL สำหรับรายงาน Data Quality โดยเฉพาะ
+  async getDataQualityUrl(): Promise<{ success: boolean; name: string; url: string }> {
+    const tableauServerUrl = this.configService.get<string>('TABLEAU_SERVER_URL');
+    const tableauServerView = this.configService.get<string>('TABLEAU_SERVER_VIEW') || tableauServerUrl;
+    const dashboardPath = '/views/DCCEDATAQUALITY/DATAQUALITY';
+    const username = this.configService.get<string>('TABLEAU_USERNAME');
+
+    if (!username) throw new Error('TABLEAU_USERNAME ไม่ได้กำหนดใน env');
+
+    const trustedUrl = `${tableauServerUrl}/trusted`;
+    this.logger.log(`Requesting Tableau trusted ticket for Data Quality: POST ${trustedUrl}?username=${username}`);
+
+    try {
+      const ticket = await this.post<string>({
+        url: trustedUrl,
+        data: `username=${encodeURIComponent(username)}`,
+        config: {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          responseType: 'text',
+          httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+        },
+      });
+
+      this.logger.log(`Tableau Data Quality ticket received: ${ticket}`);
+
+      if (!ticket || ticket.trim() === '-1') {
+        this.logger.error('Tableau returned -1: IP not in Trusted Hosts or invalid username (Data Quality)');
+        throw new HttpException(
+          'Authentication with Tableau Data Quality failed (returned -1)',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      const finalUrl = `${tableauServerView}/trusted/${ticket.trim()}${dashboardPath}`;
+      this.logger.log(`Final Tableau Data Quality URL: ${finalUrl}`);
+
+      return { success: true, name: 'รายงานคุณภาพข้อมูล (Data Quality)', url: finalUrl };
+
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.error(`Tableau API Error (Data Quality): ${err.message}`, err.stack);
+
+      if (err instanceof HttpException) throw err;
+
+      throw new HttpException('Failed to connect to Tableau Server (Data Quality)', HttpStatus.BAD_GATEWAY);
+    }
+  }
 }

@@ -54,4 +54,22 @@ export class TableauController {
 
     return await this.tableauService.getTrustedUrl({ reportCode: reportCode as any });
   }
+
+  // GET /tableau/data-quality — ดึง URL สำหรับรายงาน Data Quality
+  @Get('data-quality')
+  @ApiOperation({ summary: 'ขอ Tableau Dashboard URL สำหรับ Data Quality' })
+  @ApiResponse({
+    status: 200,
+    description: 'URL พร้อม token สำหรับเปิด Data Quality Dashboard',
+    schema: {
+      example: {
+        success: true,
+        name: 'รายงานคุณภาพข้อมูล (Data Quality)',
+        url: 'http://192.168.65.58/trusted/xxx/views/DCCEDATAQUALITY/DATAQUALITY',
+      },
+    },
+  })
+  async getDataQualityUrl() {
+    return await this.tableauService.getDataQualityUrl();
+  }
 }

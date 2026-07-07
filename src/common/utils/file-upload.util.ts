@@ -40,5 +40,8 @@ export const tempStorageOptions = {
       const ext = extname(file.originalname);
       cb(null, `${uniqueSuffix}${ext}`);
     },
-  })
+  }),
+  limits: {
+    fileSize: 100 * 1024 * 1024, // กำหนดขนาดไฟล์สูงสุดที่ 100MB
+  },
 };

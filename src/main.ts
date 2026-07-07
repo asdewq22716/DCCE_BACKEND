@@ -8,13 +8,13 @@ import {
 } from './common/global-response';
 
 import cookieParser from 'cookie-parser';
+import { json, urlencoded } from 'express';
 
 process.env.TZ = 'Asia/Bangkok';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // เปิดใช้งาน CORS
   app.enableCors({
     origin: true, // อนุญาตทุก Origin หรือระบุ URL ของ Frontend
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -22,6 +22,10 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+  
+  // เพิ่มการตั้งค่า Limit สำหรับ Body Parser เพื่อป้องกัน Error 413
+  app.use(json({ limit: '100mb' }));
+  app.use(urlencoded({ extended: true, limit: '100mb' }));
 
   // Setup Swagger
   const config = new DocumentBuilder()

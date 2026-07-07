@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @ApiTags('Reports (รายงาน)')
 @Controller('reports')
 export class ReportsController {
+
   constructor(private readonly reportsService: ReportsService) { }
 
   @Get('credentials/:requestId')

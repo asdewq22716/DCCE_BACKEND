@@ -65,7 +65,7 @@ export class TableauController {
       example: {
         success: true,
         name: 'รายงานคุณภาพข้อมูล (Data Quality)',
-        url: 'http://192.168.65.58/trusted/xxx/views/DCCEDATAQUALITY/DATAQUALITY',
+        url: 'https://dashboard-adaptme.dcce.go.th/trusted/xxx/views/DCCEDATAQUALITY/DATAQUALITY',
       },
     },
   })

@@ -22,11 +22,14 @@ export class ApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('API Token is missing');
     }
 
-    // ค้นหา Token ในตาราง api_tokens
-    const tokens = await this.db.queryBuilder({
-      select: 'SELECT * FROM api_tokens',
-      where: [{ fill: `token = ${this.db.escape(token)}` }, { fill: 'is_active = 1' }],
-    });
+    // ค้นหา Token ในตาราง api_tokens และ JOIN กับ api_requests เพื่อดึง branch_id
+    const sql = `
+      SELECT t.*, r.branch_id as req_branch_id 
+      FROM api_tokens t 
+      LEFT JOIN api_requests r ON t.request_id = r.request_id 
+      WHERE t.token = $1 AND t.is_active = 1
+    `;
+    const tokens = await this.db.query(sql, [token]);
 
     if (tokens.length === 0) {
       throw new UnauthorizedException('Invalid or inactive API Token');
@@ -42,8 +45,12 @@ export class ApiKeyGuard implements CanActivate {
     // บันทึก Log การใช้งานและอัปเดตเวลาใช้งานล่าสุด (ทำแบบ Background ไม่ใช้ await เพื่อไม่ให้ API ช้า)
     this.logUsage(token, request.url, request.ip);
 
-    // ยัดข้อมูล Token ใส่ Request เพื่อให้ Controller เอาไปใช้ต่อได้ถ้าต้องการ
-    request.apiToken = tokenData;
+    // ยัดข้อมูล Token ใส่ Request เพื่อให้ Controller เอาไปใช้ต่อได้
+    // เราจะเก็บ branch_id (ที่เป็น org_id จากฝั่งหน้าเว็บ) ไว้ใน apiToken ด้วย
+    request.apiToken = {
+      ...tokenData,
+      branch_id: tokenData.req_branch_id
+    };
 
     return true;
   }

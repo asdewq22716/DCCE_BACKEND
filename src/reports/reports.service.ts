@@ -11,22 +11,27 @@ export class ReportsService {
     private readonly mainDb: FncDB          // ฐานข้อมูลหลัก (Main DB)
   ) {}
 
-  async getFactApiDetail(limit: number = 100, offset: number = 0, branchId?: number) {
-    const whereClause = branchId ? `branch_id = '${branchId}'` : undefined;
+  async getFactApiDetail(orgBranchId: number) {
+    // ระบบ Mapping รหัสสาขาระหว่างฝั่งเว็บ (org_id) กับฝั่ง Report DB (branch_id)
+    const branchMapping: Record<number, number> = {
+      50: 1, // สาขาการจัดการทรัพยากรน้ำ
+      53: 2, // สาขาเกษตรและความมั่นคงทางอาหาร
+      30: 3, // สาขาทรัพยากรธรรมชาติ
+      40: 4, // สาขาการท่องเที่ยว
+      33: 5, // สาขาสาธารณสุข
+      26: 6, // สาขาการตั้งถิ่นฐานและความมั่นคงของมนุษย์
+    };
+
+    // แปลงรหัส หากไม่เจอใน Mapping จะคืนค่าเป็น null หรือตัวมันเอง (ขึ้นอยู่กับดีไซน์ แต่ในที่นี้จะกันพลาดให้เป็น null ถ้าไม่มี)
+    const reportBranchId = branchMapping[orgBranchId];
+    
+    // ถ้าหา mapping ไม่เจอ อาจจะแปลว่า org_id นี้ไม่มีใน report หรือยังไม่ได้ทำ mapping
+    const whereClause = reportBranchId ? `branch_id = '${reportBranchId}'` : `1 = 0`; // ถ้าไม่มีสิทธิ์/หาไม่เจอ ให้คืนค่าว่างเลย
 
     const rows = await this.reportDb.queryBuilder({
-      select: `SELECT 
-        branch_id, category, subject_id, subject_no, subject_name, 
-        question_id, question_no, question_detail, unit_name, 
-        ans_ans_id, ans_ans_header_id, ans_ans_status, ans_created_by, ans_created_date, ans_created_name, 
-        ans_division_id, ans_division_name, ans_period_end, ans_period_id, ans_period_start, 
-        ans_updated_by, ans_updated_date, 
-        av_calculate_name, av_calculate_value, av_file, av_input_value, av_unit, av_year, 
-        sub_label, sub_value, sub_river, sub_season, sub_region, sub_province_code, sub_after, sub_before, sub_plan_name
-      FROM fact_api_detail`,
+      select: `SELECT * FROM fact_api_detail`,
       where: whereClause,
-      limit: limit,
-      offset: offset,
+      // ไม่มี limit/offset เพราะส่งข้อมูลทั้งหมดให้ระบบภายนอก
     });
 
     return {

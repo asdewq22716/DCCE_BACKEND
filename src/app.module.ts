@@ -30,6 +30,7 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
 import { SystemServicesModule } from './system-services/system-services.module';
 import { EFormModule } from './e-form/e-form.module';
 import { ReportsModule } from './reports/reports.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { ReportsModule } from './reports/reports.module';
     SystemServicesModule,
     EFormModule,
     ReportsModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

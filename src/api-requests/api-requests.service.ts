@@ -541,12 +541,12 @@ export class ApiRequestsService {
       await this.auditLogService.log(
         client,
         {
-          actionType: 'STATUS_UPDATE',
+          actionType: 'UPDATE',
           moduleName: 'api_requests',
           recordId: id.toString(),
           oldData: oldItem,
           newData: updatedItem,
-          remark: updateDto.comment || `เปลี่ยนสถานะคำขอใช้งาน API เป็น ${updateDto.status}`,
+          remark: `เปลี่ยนสถานะคำขอใช้งาน API เป็น ${updateDto.status}`,
         },
         { userId: parseInt(userId, 10) || 0 },
       );

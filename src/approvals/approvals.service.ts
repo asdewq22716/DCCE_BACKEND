@@ -11,7 +11,7 @@ export class ApprovalsService {
   constructor(
     private readonly db: FncDB,
     private readonly notificationsService: NotificationsService
-  ) {}
+  ) { }
 
   /**
    * สร้างรายการอนุมัติใหม่ลงตารางกลาง
@@ -44,7 +44,7 @@ export class ApprovalsService {
       title: `รออนุมัติ: ${dto.title}`,
       message: `มีรายการรออนุมัติใหม่จากระบบ ${dto.ref_table}`,
       type: 'INFO',
-      action_url: `/admin/approvals`, // หน้า Inbox กลาง
+      action_url: `https://adaptme.dcce.go.th/cms/approve-api/${dto.ref_id}`,
       ref_table: 'approvals',
       ref_id: newApprovalId.toString(),
       target_role: dto.required_role,
@@ -72,7 +72,7 @@ export class ApprovalsService {
   /**
    * ดำเนินการอนุมัติหรือไม่อนุมัติ (Action)
    */
-  async  actionApproval(id: number, dto: ActionApprovalDto, userId: string) {
+  async actionApproval(id: number, dto: ActionApprovalDto, userId: string) {
     // 1. ดึงข้อมูลคำขอ
     const sql = `SELECT * FROM approvals WHERE id = $1 FOR UPDATE`;
     const approval = await this.db.query(sql, [id]);
@@ -127,13 +127,13 @@ export class ApprovalsService {
     // 5. ถ้าผ่านทั้งหมด หรือถูกปฏิเสธ ให้แจ้งไปตารางต้นทาง (Router)
     if (newStatus !== 'pending') {
       await this.notifySourceTable(task.ref_table, task.ref_id, newStatus, dto.extra_data);
-      
+
       // แจ้งเตือนกลับไปยังคนขอ (requester_id) ว่าผลเป็นยังไง
       await this.notificationsService.createNotification({
         title: `คำขอ ${task.title} อัปเดตสถานะ`,
         message: `คำขอของคุณถูก ${newStatus === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} แล้ว`,
         type: newStatus === 'approved' ? 'SUCCESS' : 'ERROR',
-        action_url: `/user/my-requests`,
+        action_url: `https://adaptme.dcce.go.th/wrm/request-api?id=${task.ref_id}`,
         ref_table: task.ref_table,
         ref_id: task.ref_id,
         target_user_id: task.requester_id,
@@ -152,7 +152,7 @@ export class ApprovalsService {
       if (refTable === 'api_requests') {
         // ดึงข้อมูลเดิมออกมาก่อน
         const requestData = await this.db.select('api_requests', { id: refId });
-        
+
         if (requestData && requestData.length > 0) {
           const requestInfo = requestData[0];
 
@@ -169,19 +169,19 @@ export class ApprovalsService {
           if (finalStatus === 'approved') {
             const requestId = requestInfo.request_id;
             const token = uuidv4();
-            
+
             let expiredAt: Date | null = null;
             // ใช้ end_date จาก admin ถ้าไม่ได้ระบุให้เป็น null (ไม่มีวันหมดอายุ)
             if (extraData?.end_date) {
               expiredAt = new Date(extraData.end_date);
             }
 
-          await this.db.insert('api_tokens', {
-            request_id: requestId,
-            token: token,
-            expired_at: expiredAt
-          });
-          this.logger.log(`Generated API Token for request_id ${requestId} (Expires: ${expiredAt ? expiredAt.toISOString() : 'Never'})`);
+            await this.db.insert('api_tokens', {
+              request_id: requestId,
+              token: token,
+              expired_at: expiredAt
+            });
+            this.logger.log(`Generated API Token for request_id ${requestId} (Expires: ${expiredAt ? expiredAt.toISOString() : 'Never'})`);
           }
         }
       }

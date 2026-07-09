@@ -11,4 +11,4 @@ import { ApprovalsModule } from '../approvals/approvals.module';
   providers: [ApiRequestsService],
   exports: [ApiRequestsService],
 })
-export class ApiRequestsModule {}
+export class ApiRequestsModule { }

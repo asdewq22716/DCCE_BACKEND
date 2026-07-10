@@ -81,6 +81,12 @@ export class OrganizationsService {
             );
           }
 
+          if (unitExists[0].parent_id !== null) {
+            throw new BadRequestException(
+              `หน่วยงาน "${unitExists[0].org_name}" ถูกจัดสรรให้กับสาขาอื่นไปแล้ว โปรดรีเฟรชข้อมูลใหม่`,
+            );
+          }
+
           await this.db.update(
             'organizations',
             {
@@ -139,7 +145,7 @@ export class OrganizationsService {
         const branchRows = await this.db.query(
           `SELECT org_id, org_name, parent_id, sort_order, level, is_active 
            FROM organizations 
-           WHERE org_id = $1 AND parent_id IS NULL AND is_active = 1`,
+           WHERE org_id = $1 AND parent_id IS NULL AND level = 1 AND is_active = 1`,
           [id],
         );
         if (branchRows.length === 0) {
@@ -200,7 +206,7 @@ export class OrganizationsService {
         const branches = await this.db.query(
           `SELECT org_id, org_name, parent_id, sort_order, level, is_active 
            FROM organizations 
-           WHERE parent_id IS NULL AND is_active = 1 
+           WHERE parent_id IS NULL AND level = 1 AND is_active = 1 
            ORDER BY sort_order ASC, org_id ASC`,
         );
 
@@ -814,6 +820,15 @@ export class OrganizationsService {
             );
           }
 
+          if (
+            unitRecord[0].parent_id !== null &&
+            unitRecord[0].parent_id !== branchId
+          ) {
+            throw new BadRequestException(
+              `หน่วยงาน "${unitRecord[0].org_name}" ถูกจัดสรรให้กับสาขาอื่นไปแล้ว โปรดรีเฟรชข้อมูลใหม่`,
+            );
+          }
+
           // ตรวจสอบความปลอดภัยกรณีสั่งปิดใช้งาน/ลบ (is_active = 0)
           const targetIsActive = unit.is_active ?? unitRecord[0].is_active;
           if (targetIsActive === 0 && unitRecord[0].is_active === 1) {
@@ -892,6 +907,22 @@ export class OrganizationsService {
       throw new NotFoundException('ไม่พบข้อมูลหน่วยงานที่ระบุ');
     }
     return orgs[0];
+  }
+
+  // 2.5 ดึงประวัติการแก้ไขข้อมูลสาขา
+  async getBranchHistory(id: number) {
+    try {
+      const branchExists = await this.db.select('organizations', { org_id: id });
+      if (branchExists.length === 0) {
+        throw new NotFoundException('ไม่พบข้อมูลสาขาหลักที่ระบุ');
+      }
+
+      return await this.auditLog.getLogs('organizations', id.toString());
+    } catch (err: any) {
+      if (err instanceof NotFoundException) throw err;
+      this.logger.error(`Get branch history error: ${err.message}`);
+      throw new BadRequestException('ไม่สามารถดึงประวัติการแก้ไขสาขาได้');
+    }
   }
 
   // 1.3 ลบสาขาหลักพร้อมแผนกย่อยทั้งหมดภายใต้สาขานั้น (Soft Delete ด้วย Database Transaction)
@@ -1139,17 +1170,28 @@ export class OrganizationsService {
     }
   }
 
-  // 1.6 ดึงข้อมูลหน่วยงานย่อยทั้งหมด
-  async findAllUnits(): Promise<OrganizationType[]> {
+  // 1.6 ดึงข้อมูลหน่วยงานย่อยทั้งหมด (ที่ยังไม่ถูกเลือก หรือของสาขาตัวเอง)
+  async findAllUnits(branchId?: number): Promise<OrganizationType[]> {
     try {
-      const units = await this.db.query(
-        `SELECT org_id, org_name, parent_id, sort_order, level, is_active,
-                unit_data_permissions, unit_view_climate_index, unit_view_ghg_emissions,
-                unit_edit_historical_data, unit_approve_public_data, unit_remark
-         FROM organizations
-         WHERE level = 2 AND is_active = 1
-         ORDER BY org_id ASC`,
-      );
+      let query = `
+        SELECT org_id, org_name, parent_id, sort_order, level, is_active,
+               unit_data_permissions, unit_view_climate_index, unit_view_ghg_emissions,
+               unit_edit_historical_data, unit_approve_public_data, unit_remark
+        FROM organizations
+        WHERE level = 2 AND is_active = 1
+      `;
+      const params: any[] = [];
+
+      if (branchId) {
+        query += ` AND (parent_id IS NULL OR parent_id = $1)`;
+        params.push(branchId);
+      } else {
+        query += ` AND parent_id IS NULL`;
+      }
+
+      query += ` ORDER BY org_id ASC`;
+
+      const units = await this.db.query(query, params);
       return units;
     } catch (err: any) {
       this.logger.error(`Find all units error: ${err.message}`);

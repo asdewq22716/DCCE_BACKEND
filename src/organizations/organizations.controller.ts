@@ -85,6 +85,15 @@ export class OrganizationsController {
   }
 
   @ApiTags('Organizations - Branches')
+  @Get('branches/history/:id')
+  @ApiOperation({
+    summary: 'ดึงประวัติการแก้ไขข้อมูลสาขาจาก Audit Log',
+  })
+  getBranchHistory(@Param('id', ParseIntPipe) id: number) {
+    return this.organizationsService.getBranchHistory(id);
+  }
+
+  @ApiTags('Organizations - Branches')
   @Delete('branches/:id')
   @ApiOperation({
     summary: 'ลบสาขาหลักพร้อมแผนกย่อยทั้งหมดภายใต้สาขานั้น (Soft Delete)',
@@ -137,10 +146,10 @@ export class OrganizationsController {
   @Get('units')
   @ApiOperation({
     summary:
-      'ดึงข้อมูลหน่วยงานย่อยทั้งหมด (ระดับ level = 2 และเป็นตัวที่เปิดใช้งาน)',
+      'ดึงข้อมูลหน่วยงานย่อยทั้งหมด (ระดับ level = 2 และเป็นตัวที่เปิดใช้งาน ที่ยังว่างอยู่หรือของสาขาที่ระบุ)',
   })
-  findAllUnits(): Promise<OrganizationType[]> {
-    return this.organizationsService.findAllUnits();
+  findAllUnits(@Query('branchId') branchId?: string): Promise<OrganizationType[]> {
+    return this.organizationsService.findAllUnits(branchId ? parseInt(branchId, 10) : undefined);
   }
 
   // ==========================================

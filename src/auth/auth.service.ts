@@ -17,6 +17,7 @@ import { FncCustom } from 'src/common/fnc-custom';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { MockSsoUtil } from 'src/common/utils/mock-sso.util';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService extends BaseApiService {
@@ -54,6 +55,7 @@ export class AuthService extends BaseApiService {
    */
   async login(username: string, password: string): Promise<SsoAuthResponseDto> {
     try {
+      const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
       const useMock = this.configService.get<string>('USE_MOCK_SSO') === 'true';
       let result_code: string;
       let result_text: string | undefined;
@@ -69,7 +71,7 @@ export class AuthService extends BaseApiService {
           SsoBaseResponse<SsoAuthData>
         >({
           url: `${this.ssoBaseUrl}/auth2/`,
-          config: { params: { user: username, pass: password } },
+          config: { params: { user: username, pass: hashedPassword } },
         });
         result_code = response.result_code;
         result_text = response.result_text;

@@ -30,4 +30,7 @@ export class CreateNotificationDto {
 
   @ApiProperty({ description: 'ผู้ใช้งานเป้าหมายเจาะจง (User ID)', required: false })
   target_user_id?: string;
+
+  @ApiProperty({ description: 'ผู้ใช้งานเป้าหมายหลายคน (User IDs)', required: false })
+  target_user_ids?: string[];
 }

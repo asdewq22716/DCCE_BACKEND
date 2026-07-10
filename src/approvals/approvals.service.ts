@@ -39,7 +39,38 @@ export class ApprovalsService {
       newApprovalId = result.id;
     }
 
-    // 2. สร้างการแจ้งเตือน
+    // 2. ดึงเป้าหมายเพิ่มเติม (เช่น super_user ที่ดูแลสาขาของคนขอ)
+    let extraTargetUserIds: string[] = [];
+    if (dto.requester_id && dto.requester_id !== 'system') {
+      try {
+        const sql = `
+          SELECT DISTINCT uo_super.user_id
+          FROM user_organizations uo_req
+          JOIN organizations org_req ON uo_req.org_id = org_req.org_id
+          JOIN organizations org_branch ON org_branch.org_id = CASE 
+            WHEN org_req.level = 1 THEN org_req.org_id
+            ELSE org_req.parent_id
+          END
+          JOIN user_organizations uo_super ON uo_super.org_id = org_branch.org_id
+          JOIN user_roles ur_super ON ur_super.user_id = uo_super.user_id
+          JOIN roles r_super ON r_super.role_id = ur_super.role_id
+          WHERE uo_req.user_id = $1 AND r_super.role_name = 'super_user'
+        `;
+        const executeQuery = client ? 
+          await this.db.queryTx(client, sql, [dto.requester_id]) : 
+          await this.db.query(sql, [dto.requester_id]);
+
+        extraTargetUserIds = executeQuery.map((row: any) => row.user_id.toString());
+      } catch (e: any) {
+        this.logger.error(`Error finding super_users for branch: ${e.message}`);
+      }
+    }
+
+    if (dto.required_user_id) {
+      extraTargetUserIds.push(dto.required_user_id);
+    }
+
+    // 3. สร้างการแจ้งเตือน
     await this.notificationsService.createNotification({
       title: `รออนุมัติ: ${dto.title}`,
       message: `มีรายการรออนุมัติใหม่จากระบบ ${dto.ref_table}`,
@@ -48,7 +79,7 @@ export class ApprovalsService {
       ref_table: 'approvals',
       ref_id: newApprovalId.toString(),
       target_role: dto.required_role,
-      target_user_id: dto.required_user_id,
+      target_user_ids: extraTargetUserIds.length > 0 ? extraTargetUserIds : undefined,
       sender_id: dto.requester_id
     }, client);
 

@@ -38,6 +38,7 @@ export class AuthController {
     const { user, roles } = await this.usersService.getUserById(
       user_data.user_id,
     );
+    
     const token = this.authService.getCookieWithJwtToken({
       userId: user.user_id,
       username: user.sso_username,
@@ -109,7 +110,8 @@ export class AuthController {
           permission_remark: null,
           global_permissions: externalPermissions,
           organizations: []
-        }
+        },
+        sso_token: null,
       };
     }
 
@@ -121,7 +123,8 @@ export class AuthController {
       user: user,
       roles: roles,
       organizations: organizations,
-      permissions: permissions
+      permissions: permissions,
+      sso_token: user?.sso_token,
     };
   }
 }

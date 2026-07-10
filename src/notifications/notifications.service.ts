@@ -6,7 +6,7 @@ import { CreateNotificationDto } from './dto/notification.dto';
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly db: FncDB) {}
+  constructor(private readonly db: FncDB) { }
 
   /**
    * สร้างการแจ้งเตือนใหม่ (ใช้เรียกจาก Service อื่นๆ ได้เลย)
@@ -87,7 +87,7 @@ export class NotificationsService {
       LIMIT 50
     `;
     const items = await this.db.query(sql, [userId, roleName]);
-    
+
     // แปลง payload กลับเป็น JSON object
     return items.map(item => ({
       ...item,

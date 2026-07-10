@@ -39,28 +39,27 @@ export class ApprovalsService {
       newApprovalId = result.id;
     }
 
-    // 2. ดึงเป้าหมายเพิ่มเติม (เช่น super_user ที่ดูแลสาขาของคนขอ)
+    // 2. ดึงเป้าหมายเพิ่มเติม (เช่น super_user ที่ดูแลสาขาของคำขอ)
     let extraTargetUserIds: string[] = [];
-    if (dto.requester_id && dto.requester_id !== 'system') {
+    const targetBranchId = dto.payload?.branch_id; // ดึงมาจากข้อมูลคำขอ (api_requests)
+
+    if (targetBranchId) {
       try {
         const sql = `
           SELECT DISTINCT uo_super.user_id
-          FROM user_organizations uo_req
-          JOIN organizations org_req ON uo_req.org_id = org_req.org_id
-          JOIN organizations org_branch ON org_branch.org_id = CASE 
-            WHEN org_req.level = 1 THEN org_req.org_id
-            ELSE org_req.parent_id
-          END
-          JOIN user_organizations uo_super ON uo_super.org_id = org_branch.org_id
+          FROM organizations org_all
+          JOIN user_organizations uo_super ON uo_super.org_id = org_all.org_id
           JOIN user_roles ur_super ON ur_super.user_id = uo_super.user_id
           JOIN roles r_super ON r_super.role_id = ur_super.role_id
-          WHERE uo_req.user_id = $1 AND r_super.role_name = 'super_user'
+          WHERE (org_all.org_id = $1 OR org_all.parent_id = $1)
+            AND r_super.role_name = 'super_user'
         `;
         const executeQuery = client ? 
-          await this.db.queryTx(client, sql, [dto.requester_id]) : 
-          await this.db.query(sql, [dto.requester_id]);
+          await this.db.queryTx(client, sql, [targetBranchId]) : 
+          await this.db.query(sql, [targetBranchId]);
 
         extraTargetUserIds = executeQuery.map((row: any) => row.user_id.toString());
+        this.logger.log(`Target Super Users for requested branch_id ${targetBranchId}: ${extraTargetUserIds.join(', ')}`);
       } catch (e: any) {
         this.logger.error(`Error finding super_users for branch: ${e.message}`);
       }

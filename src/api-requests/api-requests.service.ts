@@ -375,7 +375,8 @@ export class ApiRequestsService {
           request_id: newRequestId,
           app_url: newItem.app_url,
           environment: newItem.environment,
-          objective_text: newItem.objective_text
+          objective_text: newItem.objective_text,
+          branch_id: createDto.branch_id
         },
         required_role: 'admin', // ใครเป็น admin ก็สามารถอนุมัติได้
         requester_id: userId

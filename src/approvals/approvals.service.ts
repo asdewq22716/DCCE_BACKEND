@@ -54,9 +54,13 @@ export class ApprovalsService {
           WHERE (org_all.org_id = $1 OR org_all.parent_id = $1)
             AND r_super.role_name = 'super_user'
         `;
+        this.logger.log(`[SQL Query SuperUser] Query: ${sql.trim().replace(/\s+/g, ' ')} | Params: [${targetBranchId}]`);
+
         const executeQuery = client ? 
           await this.db.queryTx(client, sql, [targetBranchId]) : 
           await this.db.query(sql, [targetBranchId]);
+        
+        this.logger.log(`[SQL Query SuperUser] Result: ${JSON.stringify(executeQuery)}`);
 
         extraTargetUserIds = executeQuery.map((row: any) => row.user_id.toString());
         this.logger.log(`Target Super Users for requested branch_id ${targetBranchId}: ${extraTargetUserIds.join(', ')}`);
@@ -70,17 +74,45 @@ export class ApprovalsService {
     }
 
     // 3. สร้างการแจ้งเตือน
-    await this.notificationsService.createNotification({
-      title: `รออนุมัติ: ${dto.title}`,
-      message: `มีรายการรออนุมัติใหม่จากระบบ ${dto.ref_table}`,
-      type: 'INFO',
-      action_url: `/cms/approve-api/${dto.ref_id}`,
-      ref_table: 'approvals',
-      ref_id: newApprovalId.toString(),
-      target_role: dto.required_role,
-      target_user_ids: extraTargetUserIds.length > 0 ? extraTargetUserIds : undefined,
-      sender_id: dto.requester_id
-    }, client);
+    // 3.1 ค้นหา User ทั้งหมดที่มี Role ที่กำหนด (ถ้ามี)
+    if (dto.required_role) {
+      try {
+        const sqlRole = `
+          SELECT ur.user_id 
+          FROM user_roles ur
+          JOIN roles r ON ur.role_id = r.role_id
+          WHERE r.role_name = $1
+        `;
+        const executeQueryRole = client ? 
+          await this.db.queryTx(client, sqlRole, [dto.required_role]) : 
+          await this.db.query(sqlRole, [dto.required_role]);
+        
+        executeQueryRole.forEach((row: any) => {
+          const uid = row.user_id.toString();
+          if (!extraTargetUserIds.includes(uid)) {
+            extraTargetUserIds.push(uid);
+          }
+        });
+      } catch (e: any) {
+        this.logger.error(`Error finding users for role ${dto.required_role}: ${e.message}`);
+      }
+    }
+
+    // 3.2 แจ้งเตือนไปยัง User เป้าหมายทั้งหมด
+    if (extraTargetUserIds && extraTargetUserIds.length > 0) {
+      for (const targetUserId of extraTargetUserIds) {
+        await this.notificationsService.createNotification({
+          title: `รออนุมัติ: ${dto.title}`,
+          message: `มีรายการรออนุมัติใหม่จากระบบ ${dto.ref_table}`,
+          type: 'INFO',
+          action_url: `/cms/approve-api/${dto.ref_id}`,
+          ref_table: 'approvals',
+          ref_id: newApprovalId.toString(),
+          target_user_id: targetUserId,
+          sender_id: dto.requester_id
+        }, client);
+      }
+    }
 
     return { id: newApprovalId, ...insertData };
   }

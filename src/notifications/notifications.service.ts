@@ -33,21 +33,15 @@ export class NotificationsService {
         targets.push(dto.target_user_id);
       }
 
-      // 2. ถ้ามีการระบุ Role ให้ไปดึง user_id ทั้งหมดที่มี Role นั้นมา
-      if (dto.target_role) {
-        const sql = `
-          SELECT ur.user_id 
-          FROM user_roles ur
-          JOIN roles r ON ur.role_id = r.role_id
-          WHERE r.role_name = $1
-        `;
-        const users = clientTx ? await this.db.queryTx(clientTx, sql, [dto.target_role]) : await this.db.query(sql, [dto.target_role]);
-        for (const u of users) {
-          if (!targets.includes(u.user_id.toString())) {
-            targets.push(u.user_id.toString());
+      // 1.5 รองรับ target_user_ids ที่ส่งมาเป็น Array
+      if (dto.target_user_ids && Array.isArray(dto.target_user_ids)) {
+        dto.target_user_ids.forEach(id => {
+          if (!targets.includes(id)) {
+            targets.push(id);
           }
-        }
+        });
       }
+
 
       // 3. วนลูป Insert ทีละคน (Fan-out)
       if (targets.length > 0) {

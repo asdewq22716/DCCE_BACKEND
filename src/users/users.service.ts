@@ -59,6 +59,28 @@ export class UsersService {
     }
   }
 
+  async getEmployeeOrganizationsByUserId(user_id: number): Promise<any[]> {
+    try {
+      return await this.db.query(
+        `SELECT 
+           o.org_id, 
+           o.org_name, 
+           o.level, 
+           uo.is_primary,
+           o.parent_id,
+           p.org_name AS parent_org_name
+         FROM user_organizations uo 
+         JOIN organizations o ON uo.org_id = o.org_id 
+         LEFT JOIN organizations p ON o.parent_id = p.org_id
+         WHERE uo.user_id = $1`,
+        [user_id]
+      );
+    } catch (err: any) {
+      this.logger.error(`Get user orgs by user id error: ${err.message}`);
+      return [];
+    }
+  }
+
   async getUserById(userId: number) {
     const users = await this.db.select<any>('users', {
       user_id: userId,

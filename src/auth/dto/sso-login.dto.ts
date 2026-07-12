@@ -11,7 +11,7 @@ export class SsoLoginDto {
   user: string;
 
   @ApiProperty({
-    example: '57FB023138E362AEB8F080B8ABA78F68B9B41B33',
+    example: 'Form01@26',
     description: 'Password for SSO authentication',
   })
   @IsNotEmpty()

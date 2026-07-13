@@ -54,9 +54,11 @@ export class AuthService extends BaseApiService {
    */
   async login(username: string, password: string, recaptchaToken?: string): Promise<SsoAuthResponseDto> {
     try {
-      // 1. ตรวจสอบ reCAPTCHA (ถ้ามีการตั้งค่า SECRET KEY ไว้)
+      // 1. ตรวจสอบ reCAPTCHA (เช็คสวิตช์เปิด/ปิด จาก .env)
+      const enableRecaptcha = this.configService.get<string>('ENABLE_RECAPTCHA');
       const recaptchaSecret = this.configService.get<string>('RECAPTCHA_SECRET_KEY');
-      if (recaptchaSecret) {
+      
+      if (enableRecaptcha === 'true' && recaptchaSecret) {
         if (!recaptchaToken) {
           throw new UnauthorizedException('กรุณายืนยันว่าคุณไม่ใช่บอท (reCAPTCHA)');
         }

@@ -51,13 +51,17 @@ export class AuditLogsService {
         },
         {
           if: search,
-          fill: `(al.remark ILIKE '%${search}%' OR al.module_name ILIKE '%${search}%')`,
+          fill: `(al.remark ILIKE '%${search}%' OR al.module_name ILIKE '%${search}%' OR req.request_id ILIKE '%${search}%')`,
         },
       ];
 
       // 1. ดึงจำนวนรายการทั้งหมดเพื่อคำนวณจำนวนหน้า
       const countResult = await this.db.queryBuilder({
-        select: 'SELECT COUNT(*)::int as total FROM audit_logs al',
+        select: `
+          SELECT COUNT(*)::int as total 
+          FROM audit_logs al
+          LEFT JOIN api_requests req ON al.record_id = req.id::text AND al.module_name = 'api_requests'
+        `,
         where,
       });
       const totalItems = countResult[0]?.total || 0;
@@ -77,9 +81,11 @@ export class AuditLogsService {
             al.remark,
             al.ip_address,
             al.user_agent,
-            al.created_at
+            al.created_at,
+            req.request_id
           FROM audit_logs al
           LEFT JOIN users u ON al.created_by = u.user_id
+          LEFT JOIN api_requests req ON al.record_id = req.id::text AND al.module_name = 'api_requests'
         `,
         where,
         orderBy: 'al.created_at DESC',

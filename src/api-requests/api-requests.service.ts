@@ -182,11 +182,11 @@ export class ApiRequestsService {
       // [Role 1: Admin] สามารถมองเห็นข้อมูลได้ทั้งหมด (ผ่านฉลุย ไม่ต้องเพิ่มเงื่อนไข)
     }
     else if (isSuperUser) {
-      // [Role 2: Super User] มองเห็นข้อมูลขององค์กรตัวเอง และองค์กรลูก (Level 1)
+      // [Role 2: Super User] หา Level 1 (สาขาหลัก) ของ User คนนี้ แล้วให้เห็นข้อมูลทั้งหมดภายใต้ Level 1 นั้น
       const orgSql = `
-        SELECT DISTINCT o.org_id 
+        SELECT DISTINCT COALESCE(o.parent_id, o.org_id) AS level1_id 
         FROM user_organizations uo
-        JOIN organizations o ON o.org_id = uo.org_id OR o.parent_id = uo.org_id
+        JOIN organizations o ON o.org_id = uo.org_id
         WHERE uo.user_id = $1
       `;
       const orgs = await this.db.query(orgSql, [uId.toString()]);
@@ -194,8 +194,10 @@ export class ApiRequestsService {
       // ถ้าไม่มีองค์กร คืนค่าตารางว่างกลับไปทันที
       if (orgs.length === 0) return emptyResult;
 
-      const allowedOrgIds = orgs.map((row: any) => row.org_id).join(',');
-      where.push({ fill: `(r.branch_id IN (${allowedOrgIds}) OR r.division_id IN (${allowedOrgIds}))` });
+      const allowedBranchIds = orgs.map((row: any) => row.level1_id).join(',');
+
+      // ดึงข้อมูลทั้งหมดที่ branch_id (Level 1) ตรงกับของตัวเอง (ไม่สนใจ division_id)
+      where.push({ fill: `r.branch_id IN (${allowedBranchIds})` });
     }
     else {
       // [Role อื่นๆ] ไม่อนุญาตให้มองเห็นข้อมูลในส่วนหลังบ้าน เด้งออกทันที
@@ -212,7 +214,7 @@ export class ApiRequestsService {
     `;
 
     const selectCount = `SELECT COUNT(*)::int as total ${fromAndJoins}`;
-    const totalResult = await this.db.queryBuilder({ select: selectCount, where });
+    const totalResult = await this.db.queryBuilder({ select: selectCount, where, debug: true });
     const totalItems = totalResult[0]?.total || 0;
 
     const selectData = `
@@ -231,6 +233,7 @@ export class ApiRequestsService {
       orderBy: 'r.created_at DESC',
       limit,
       offset,
+      debug: true,
     });
 
     if (items.length > 0) {

@@ -52,8 +52,39 @@ export class AuthService extends BaseApiService {
   /**
    * 1. ฟังก์ชันล็อกอิน SSO
    */
-  async login(username: string, password: string): Promise<SsoAuthResponseDto> {
+  async login(username: string, password: string, recaptchaToken?: string): Promise<SsoAuthResponseDto> {
     try {
+      // 1. ตรวจสอบ reCAPTCHA (ถ้ามีการตั้งค่า SECRET KEY ไว้)
+      const recaptchaSecret = this.configService.get<string>('RECAPTCHA_SECRET_KEY');
+      if (recaptchaSecret) {
+        if (!recaptchaToken) {
+          throw new UnauthorizedException('กรุณายืนยันว่าคุณไม่ใช่บอท (reCAPTCHA)');
+        }
+        
+        try {
+          const verifyResponse = await this.httpService.axiosRef.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            null,
+            {
+              params: {
+                secret: recaptchaSecret,
+                response: recaptchaToken,
+              },
+            },
+          );
+          
+          if (!verifyResponse.data.success) {
+            this.logger.warn(`reCAPTCHA Verification Failed: ${JSON.stringify(verifyResponse.data)}`);
+            throw new UnauthorizedException('การยืนยัน reCAPTCHA ไม่ผ่าน กรุณาลองใหม่อีกครั้ง');
+          }
+        } catch (error: any) {
+          if (error instanceof HttpException) throw error;
+          this.logger.error('reCAPTCHA Error:', error);
+          throw new UnauthorizedException('ไม่สามารถตรวจสอบ reCAPTCHA ได้');
+        }
+      }
+
+      // 2. เข้ารหัสและล็อกอิน SSO
       const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
 
       const response = await this.get<SsoBaseResponse<SsoAuthData>>({

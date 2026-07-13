@@ -281,15 +281,7 @@ export class OrganizationsService {
   // 7.0 ดึงรายชื่อผู้ใช้งานทั้งหมดพร้อมสังกัดหลัก (สาขา + หน่วยงาน)
   async getUsersAssignmentList(query: AssignQueryDto) {
     try {
-      let sql = `
-        SELECT
-          u.user_id,
-          u.full_name,
-          u.sso_email AS email,
-          org_unit.org_id AS unit_id,
-          org_unit.org_name AS unit_name,
-          org_branch.org_id AS branch_id,
-          org_branch.org_name AS branch_name
+      let fromWhere = `
         FROM users u
         LEFT JOIN user_organizations uo ON u.user_id = uo.user_id AND uo.is_primary = 1
         LEFT JOIN organizations org_unit ON uo.org_id = org_unit.org_id AND org_unit.is_active = 1
@@ -300,24 +292,59 @@ export class OrganizationsService {
       let paramIndex = 1;
 
       if (query.name) {
-        sql += ` AND u.full_name ILIKE $${paramIndex}`;
+        fromWhere += ` AND u.full_name ILIKE $${paramIndex}`;
         params.push(`%${query.name}%`);
         paramIndex++;
       }
       if (query.branch_id) {
-        sql += ` AND org_branch.org_id = $${paramIndex}`;
+        fromWhere += ` AND org_branch.org_id = $${paramIndex}`;
         params.push(parseInt(query.branch_id, 10));
         paramIndex++;
       }
       if (query.unit_id) {
-        sql += ` AND org_unit.org_id = $${paramIndex}`;
+        fromWhere += ` AND org_unit.org_id = $${paramIndex}`;
         params.push(parseInt(query.unit_id, 10));
         paramIndex++;
       }
 
-      sql += ` ORDER BY u.user_id ASC`;
+      // นับจำนวนทั้งหมดสำหรับ Pagination
+      const countSql = `SELECT COUNT(*)::int as total ${fromWhere}`;
+      const countResult = await this.db.query(countSql, params);
+      const totalItems = countResult[0]?.total || 0;
 
-      return await this.db.query(sql, params);
+      // จัดการตัวแปร Pagination
+      const page = query.page && query.page > 0 ? query.page : 1;
+      const limit = query.limit && query.limit > 0 ? query.limit : 10;
+      const offset = (page - 1) * limit;
+
+      // คิวรี่ดึงข้อมูล
+      const sql = `
+        SELECT
+          u.user_id,
+          u.full_name,
+          u.sso_email AS email,
+          org_unit.org_id AS unit_id,
+          org_unit.org_name AS unit_name,
+          org_branch.org_id AS branch_id,
+          org_branch.org_name AS branch_name
+        ${fromWhere}
+        ORDER BY u.user_id ASC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+      params.push(limit, offset);
+
+      const items = await this.db.query(sql, params);
+
+      return {
+        data: items,
+        meta: {
+          totalItems,
+          itemCount: items.length,
+          itemsPerPage: limit,
+          totalPages: Math.ceil(totalItems / limit),
+          currentPage: page,
+        },
+      };
     } catch (err: any) {
       this.logger.error(`Get users assignment list error: ${err.message}`);
       throw new BadRequestException(

@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class AssignQueryDto {
   @ApiPropertyOptional({
@@ -25,4 +26,22 @@ export class AssignQueryDto {
   @IsOptional()
   @IsString()
   unit_id?: string;
+
+  @ApiPropertyOptional({
+    description: 'หน้าที่ (Pagination)',
+    default: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  page?: number;
+
+  @ApiPropertyOptional({
+    description: 'จำนวนรายการต่อหน้า (Pagination)',
+    default: 10,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  limit?: number;
 }

@@ -23,8 +23,9 @@ export class ApiRequestsController {
 
   @Get()
   @ApiOperation({ summary: 'ดึงรายการคำขอใช้งาน API ทั้งหมด (พร้อมฟิลเตอร์และการแบ่งหน้า)' })
-  findAll(@Query() query: ApiRequestQueryDto) {
-    return this.apiRequestsService.findAll(query);
+  findAll(@Query() query: ApiRequestQueryDto, @Req() req: any) {
+    const userId = req.user?.userId || 'anonymous';
+    return this.apiRequestsService.findAll(query, userId);
   }
 
   @Get(':id')

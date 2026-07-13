@@ -17,10 +17,17 @@ export class ApiRequestsService {
     private readonly approvalsService: ApprovalsService,
   ) { }
 
-  async findAll(query: ApiRequestQueryDto) {
+  async findAll(query: ApiRequestQueryDto, userId: string) {
     const page = query.page && query.page > 0 ? query.page : 1;
     const limit = query.limit && query.limit > 0 ? query.limit : 10;
     const offset = (page - 1) * limit;
+
+    if (userId === 'anonymous') {
+      return {
+        data: [],
+        meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit, totalPages: 0, currentPage: page },
+      };
+    }
 
     const status = this.db.escape(query.status);
     const branch_id = query.branch_id;
@@ -30,6 +37,7 @@ export class ApiRequestsService {
 
     const where = [
       { fill: 'r.is_active = 1' },
+      { fill: `r.created_by = ${parseInt(userId, 10)}` },
       {
         if: status,
         fill: `r.status = '${status}'`,
@@ -174,15 +182,20 @@ export class ApiRequestsService {
       // [Role 1: Admin] สามารถมองเห็นข้อมูลได้ทั้งหมด (ผ่านฉลุย ไม่ต้องเพิ่มเงื่อนไข)
     }
     else if (isSuperUser) {
-      // [Role 2: Super User] มองเห็นเฉพาะข้อมูลขององค์กรหลักของตัวเอง
-      const orgSql = `SELECT org_id FROM user_organizations WHERE user_id = $1 AND is_primary = 1`;
+      // [Role 2: Super User] มองเห็นข้อมูลขององค์กรตัวเอง และองค์กรลูก (Level 1)
+      const orgSql = `
+        SELECT DISTINCT o.org_id 
+        FROM user_organizations uo
+        JOIN organizations o ON o.org_id = uo.org_id OR o.parent_id = uo.org_id
+        WHERE uo.user_id = $1
+      `;
       const orgs = await this.db.query(orgSql, [uId.toString()]);
 
-      // ถ้าไม่มีองค์กรหลัก คืนค่าตารางว่างกลับไปทันที
+      // ถ้าไม่มีองค์กร คืนค่าตารางว่างกลับไปทันที
       if (orgs.length === 0) return emptyResult;
 
-      const orgId = orgs[0].org_id;
-      where.push({ fill: `(r.branch_id = ${orgId} OR r.division_id = ${orgId})` });
+      const allowedOrgIds = orgs.map((row: any) => row.org_id).join(',');
+      where.push({ fill: `(r.branch_id IN (${allowedOrgIds}) OR r.division_id IN (${allowedOrgIds}))` });
     }
     else {
       // [Role อื่นๆ] ไม่อนุญาตให้มองเห็นข้อมูลในส่วนหลังบ้าน เด้งออกทันที

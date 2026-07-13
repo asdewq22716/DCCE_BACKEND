@@ -34,7 +34,7 @@ export class AuthController {
     @Body() dto: SsoLoginDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ user: SsoAuthResponseDto; roles: TypeRoles[]; access_token?: string }> {
-    const user_data = await this.authService.login(dto.user, dto.pass);
+    const user_data = await this.authService.login(dto.user, dto.pass, dto.recaptchaToken);
     const { user, roles } = await this.usersService.getUserById(
       user_data.user_id,
     );

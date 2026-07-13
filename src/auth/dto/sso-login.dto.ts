@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 
 export class SsoLoginDto {
   @ApiProperty({
@@ -17,4 +17,11 @@ export class SsoLoginDto {
   @IsNotEmpty()
   @IsString()
   pass: string;
+
+  @ApiPropertyOptional({
+    description: 'reCAPTCHA response token from the frontend',
+  })
+  @IsOptional()
+  @IsString()
+  recaptchaToken?: string;
 }

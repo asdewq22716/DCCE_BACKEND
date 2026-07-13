@@ -64,15 +64,18 @@ export class AuthService extends BaseApiService {
         }
         
         try {
+          const params = new URLSearchParams();
+          params.append('secret', recaptchaSecret);
+          params.append('response', recaptchaToken);
+
           const verifyResponse = await this.httpService.axiosRef.post(
             'https://www.google.com/recaptcha/api/siteverify',
-            null,
+            params.toString(),
             {
-              params: {
-                secret: recaptchaSecret,
-                response: recaptchaToken,
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
               },
-            },
+            }
           );
           
           if (!verifyResponse.data.success) {

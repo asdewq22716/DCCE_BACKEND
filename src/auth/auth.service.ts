@@ -78,9 +78,11 @@ export class AuthService extends BaseApiService {
             }
           );
           
-          if (!verifyResponse.data.success) {
-            this.logger.warn(`reCAPTCHA Verification Failed: ${JSON.stringify(verifyResponse.data)}`);
-            throw new UnauthorizedException('การยืนยัน reCAPTCHA ไม่ผ่าน กรุณาลองใหม่อีกครั้ง');
+          const verifyData = verifyResponse.data;
+
+          if (!verifyData.success) {
+            this.logger.warn(`reCAPTCHA Verification Failed: ${JSON.stringify(verifyData)}`);
+            throw new UnauthorizedException('การยืนยัน reCAPTCHA ไม่ผ่าน (Token อาจหมดอายุ หรือไม่ถูกต้อง)');
           }
         } catch (error: any) {
           if (error instanceof HttpException) throw error;

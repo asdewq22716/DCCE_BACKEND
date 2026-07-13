@@ -35,11 +35,15 @@ export class TableauService extends BaseApiService {
     try {
       // ส่ง username ใน body แบบ form-encoded
       // ตรงกับ: curl -X POST -d "username=dcceadmin" http://192.168.65.58/trusted
+      const postData = new URLSearchParams({ username });
+      this.logger.log(`Sending ticket request to URL: ${trustedUrl}, Data: ${postData.toString()}`);
+
       const ticket = await this.post<string>({
         url: trustedUrl,
-        data: new URLSearchParams({ username }),
+        data: postData,
         config: { httpsAgent: new https.Agent({ rejectUnauthorized: false }) },
       });
+
 
       this.logger.log(`Tableau ticket received: ${ticket}`);
 

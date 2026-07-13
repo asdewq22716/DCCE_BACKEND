@@ -64,16 +64,17 @@ export class AuthService extends BaseApiService {
         }
         
         try {
-          const params = new URLSearchParams();
-          params.append('secret', recaptchaSecret);
-          params.append('response', recaptchaToken);
+          // ใช้ .trim() ป้องกันกรณีเผลอก๊อปปี้แล้วมีช่องว่าง (spacebar) ติดมาในไฟล์ .env
+          const safeSecret = (recaptchaSecret || '').trim();
+          const safeToken = (recaptchaToken || '').trim();
 
           const verifyResponse = await this.httpService.axiosRef.post(
             'https://www.google.com/recaptcha/api/siteverify',
-            params.toString(),
+            null,
             {
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+              params: {
+                secret: safeSecret,
+                response: safeToken,
               },
             }
           );

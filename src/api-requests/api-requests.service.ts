@@ -56,7 +56,7 @@ export class ApiRequestsService {
     `;
 
     const selectCount = `SELECT COUNT(*)::int as total ${fromAndJoins}`;
-    const totalResult = await this.db.queryBuilder({ select: selectCount, where });
+    const totalResult = await this.db.queryBuilder({ select: selectCount, where, debug: true });
     const totalItems = totalResult[0]?.total || 0;
 
     const selectData = `
@@ -75,6 +75,7 @@ export class ApiRequestsService {
       orderBy: 'r.created_at DESC',
       limit,
       offset,
+      debug: true,
     });
 
     // ดึง Approval Logs และ Audit Logs สำหรับทุกรายการใน List แบบ Batch

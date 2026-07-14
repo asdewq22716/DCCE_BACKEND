@@ -82,7 +82,8 @@ export class AuditLogsService {
             al.ip_address,
             al.user_agent,
             al.created_at,
-            req.request_id
+            req.request_id,
+            req.status AS request_status
           FROM audit_logs al
           LEFT JOIN users u ON al.created_by = u.user_id
           LEFT JOIN api_requests req ON al.record_id = req.id::text AND al.module_name = 'api_requests'
@@ -129,9 +130,12 @@ export class AuditLogsService {
         al.remark,
         al.ip_address,
         al.user_agent,
-        al.created_at
+        al.created_at,
+        req.request_id,
+        req.status AS request_status
       FROM audit_logs al
       LEFT JOIN users u ON al.created_by = u.user_id
+      LEFT JOIN api_requests req ON al.record_id = req.id::text AND al.module_name = 'api_requests'
       WHERE al.log_id = $1`,
       [id],
     );

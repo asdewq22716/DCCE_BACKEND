@@ -3,7 +3,10 @@ import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ApiRequestQueryDto {
-
+  @ApiPropertyOptional({ description: 'คำค้นหา (เช่น Request ID หรือชื่อผู้ขอ)' })
+  @IsString()
+  @IsOptional()
+  search?: string;
 
   @ApiPropertyOptional({ description: 'สถานะ (เช่น pending, approved, rejected)' })
   @IsString()

@@ -30,6 +30,7 @@ export class ApiRequestsService {
     }
 
     const status = this.db.escape(query.status);
+    const search = this.db.escape(query.search);
     const branch_id = query.branch_id;
     const division_id = query.division_id;
     const start_date = this.db.escape(query.start_date);
@@ -38,26 +39,12 @@ export class ApiRequestsService {
     const where = [
       { fill: 'r.is_active = 1' },
       { fill: `r.created_by = ${parseInt(userId, 10)}` },
-      {
-        if: status,
-        fill: `r.status = '${status}'`,
-      },
-      {
-        if: branch_id !== undefined,
-        fill: `r.branch_id = ${branch_id}`,
-      },
-      {
-        if: division_id !== undefined,
-        fill: `r.division_id = ${division_id}`,
-      },
-      {
-        if: start_date,
-        fill: `r.created_at >= '${start_date} 00:00:00'`,
-      },
-      {
-        if: end_date,
-        fill: `r.created_at <= '${end_date} 23:59:59'`,
-      },
+      { if: status, fill: `r.status = '${status}'` },
+      { if: search, fill: `(r.request_id ILIKE '%${search}%' OR r.objective_text ILIKE '%${search}%' OR u.full_name ILIKE '%${search}%' OR r.created_at::text ILIKE '%${search}%' OR TO_CHAR(r.created_at, 'DD/MM/YYYY') ILIKE '%${search}%')` },
+      { if: branch_id && !isNaN(branch_id) && branch_id > 0, fill: `r.branch_id = ${branch_id}` },
+      { if: division_id && !isNaN(division_id) && division_id > 0, fill: `r.division_id = ${division_id}` },
+      { if: start_date, fill: `r.created_at >= '${start_date} 00:00:00'` },
+      { if: end_date, fill: `r.created_at <= '${end_date} 23:59:59'` },
     ];
 
     const fromAndJoins = `
@@ -146,6 +133,7 @@ export class ApiRequestsService {
 
     // 2. จัดเตรียมเงื่อนไขการค้นหาพื้นฐาน (Filter by Form Data)
     const status = this.db.escape(query.status);
+    const search = this.db.escape(query.search);
     const branch_id = query.branch_id;
     const division_id = query.division_id;
     const start_date = this.db.escape(query.start_date);
@@ -154,8 +142,9 @@ export class ApiRequestsService {
     const where: any[] = [
       { fill: 'r.is_active = 1' },
       { if: status, fill: `r.status = '${status}'` },
-      { if: branch_id !== undefined, fill: `r.branch_id = ${branch_id}` },
-      { if: division_id !== undefined, fill: `r.division_id = ${division_id}` },
+      { if: search, fill: `(r.request_id ILIKE '%${search}%' OR r.objective_text ILIKE '%${search}%' OR u.full_name ILIKE '%${search}%' OR r.created_at::text ILIKE '%${search}%' OR TO_CHAR(r.created_at, 'DD/MM/YYYY') ILIKE '%${search}%')` },
+      { if: branch_id && !isNaN(branch_id) && branch_id > 0, fill: `r.branch_id = ${branch_id}` },
+      { if: division_id && !isNaN(division_id) && division_id > 0, fill: `r.division_id = ${division_id}` },
       { if: start_date, fill: `r.created_at >= '${start_date} 00:00:00'` },
       { if: end_date, fill: `r.created_at <= '${end_date} 23:59:59'` },
     ];

@@ -11,7 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationsService } from './organizations.service';
 import { AssignUserDto } from './dto/assign-user.dto';
@@ -23,6 +23,7 @@ import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDetailDto } from './dto/update-unit-detail.dto';
 import { BranchQueryDto } from './dto/organizations-queries.dto';
 import { AssignOrgPermissionsDto } from './dto/assign-org-permissions.dto';
+import { ResetUserOrgDto } from './dto/reset-user-org.dto';
 import { OrganizationType } from './types/organization.type';
 
 @ApiBearerAuth()
@@ -205,6 +206,37 @@ export class OrganizationsController {
     @Param('userId', ParseIntPipe) userId: number,
   ) {
     return this.organizationsService.getUserAssignmentHistory(userId);
+  }
+
+  @ApiTags('Organizations - Assign')
+  @Delete('users/:userId/reset')
+  @ApiOperation({
+    summary:
+      'รีเซ็ตสังกัดและสิทธิ์หน่วยงานทั้งหมดของผู้ใช้ให้กลับสู่สถานะผู้ใช้ใหม่ (Reset User Organizations)',
+    description:
+      'ล้างข้อมูลสังกัดหลัก (is_primary = 1), หน่วยงานเสริม (is_primary = 0), และสิทธิ์ย่อยระดับหน่วยงานทั้งหมดของผู้ใช้คนนี้ พร้อมบันทึก Audit Log',
+  })
+  @ApiParam({
+    name: 'userId',
+    type: 'number',
+    description: 'ID ของผู้ใช้งานที่ต้องการรีเซ็ตสังกัด',
+    example: 10,
+  })
+  resetUserOrganizations(
+    @Req() req: any,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() dto?: ResetUserOrgDto,
+  ) {
+    const context = {
+      userId: req.user?.userId || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+    return this.organizationsService.resetUserOrganizations(
+      userId,
+      dto,
+      context,
+    );
   }
 
   // ==========================================

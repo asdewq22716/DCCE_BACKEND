@@ -18,6 +18,7 @@ import { UpdateBranchWithUnitsDto } from './dto/update-branch-with-units.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDetailDto } from './dto/update-unit-detail.dto';
 import { AssignOrgPermissionsDto } from './dto/assign-org-permissions.dto';
+import { ResetUserOrgDto } from './dto/reset-user-org.dto';
 import { OrganizationType } from './types/organization.type';
 
 @Injectable()
@@ -514,6 +515,137 @@ export class OrganizationsService {
       );
       throw new BadRequestException(
         'ไม่สามารถดึงประวัติการย้ายสังกัดได้',
+      );
+    }
+  }
+
+  // 7.4 รีเซ็ตสังกัดและสิทธิ์หน่วยงานทั้งหมดของผู้ใช้งานให้กลับสู่สถานะผู้ใช้ใหม่
+  async resetUserOrganizations(
+    userId: number,
+    dto?: ResetUserOrgDto,
+    context?: AuditContext,
+  ) {
+    const users = await this.db.select<any>('users', { user_id: userId });
+    if (users.length === 0) {
+      throw new NotFoundException('ไม่พบข้อมูลผู้ใช้งานที่ระบุ');
+    }
+    const user = users[0];
+
+    const resetRoles = dto?.reset_roles === true;
+    const remark =
+      dto?.remark || 'รีเซ็ตสังกัดและสิทธิ์หน่วยงานทั้งหมดให้กลับสู่สถานะผู้ใช้ใหม่';
+
+    const client = await this.db.startTransaction();
+
+    try {
+      // 1. Snapshot ข้อมูลสังกัดเดิมทั้งหมด (ทั้ง primary และ access)
+      const existingOrgs = await this.db.queryTx(
+        client,
+        `SELECT uo.user_id, uo.org_id, uo.is_primary, o.org_name, o.level, o.parent_id
+         FROM user_organizations uo
+         LEFT JOIN organizations o ON uo.org_id = o.org_id
+         WHERE uo.user_id = $1`,
+        [userId],
+      );
+
+      // 2. Snapshot ข้อมูลสิทธิ์ override รายบุคคลเดิม
+      const existingPermissions = await this.db.queryTx(
+        client,
+        `SELECT up.*, p.p_key, p.p_label
+         FROM user_permissions up
+         LEFT JOIN permissions p ON up.permission_id = p.permission_id
+         WHERE up.user_id = $1`,
+        [userId],
+      );
+
+      // 3. Snapshot บทบาทเดิม (ถ้าเลือก reset roles)
+      let existingRoles: any[] = [];
+      if (resetRoles) {
+        existingRoles = await this.db.queryTx(
+          client,
+          `SELECT ur.*, r.role_name
+           FROM user_roles ur
+           LEFT JOIN roles r ON ur.role_id = r.role_id
+           WHERE ur.user_id = $1`,
+          [userId],
+        );
+      }
+
+      // 4. ลบข้อมูลจาก user_organizations ทั้งหมด
+      await this.db.queryTx(
+        client,
+        'DELETE FROM user_organizations WHERE user_id = $1',
+        [userId],
+      );
+
+      // 5. ลบสิทธิ์ override ใน user_permissions ทั้งหมดของ user คนนี้
+      await this.db.queryTx(
+        client,
+        'DELETE FROM user_permissions WHERE user_id = $1',
+        [userId],
+      );
+
+      // 6. ถ้าเลือก reset roles ให้รีเซ็ตบทบาทกลับเป็น USER
+      if (resetRoles) {
+        await this.db.queryTx(
+          client,
+          'DELETE FROM user_roles WHERE user_id = $1',
+          [userId],
+        );
+
+        const defaultRoles = await this.db.queryTx(
+          client,
+          "SELECT role_id FROM roles WHERE UPPER(role_name) = 'USER' AND is_active = 1",
+        );
+        if (defaultRoles.length > 0) {
+          await this.db.insert(
+            'user_roles',
+            { user_id: userId, role_id: defaultRoles[0].role_id },
+            client,
+          );
+        }
+      }
+
+      // 7. บันทึก Audit Log Snapshot ข้อมูลเดิมทั้งหมดก่อนลบ
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'DELETE',
+          moduleName: 'user_organizations_reset',
+          recordId: userId.toString(),
+          oldData: {
+            user: {
+              user_id: user.user_id,
+              sso_username: user.sso_username,
+              full_name: user.full_name,
+            },
+            organizations: existingOrgs,
+            permissions: existingPermissions,
+            ...(resetRoles ? { roles: existingRoles } : {}),
+          },
+          newData: null,
+          remark,
+        },
+        context,
+      );
+
+      await this.db.commit(client);
+
+      return {
+        message:
+          'รีเซ็ตสังกัดและสิทธิ์หน่วยงานของผู้ใช้งานเรียบร้อยแล้ว ผู้ใช้กลับสู่สถานะไม่มีสังกัด',
+        user_id: userId,
+        username: user.sso_username || user.full_name,
+        removed_organizations_count: existingOrgs.length,
+        removed_permissions_count: existingPermissions.length,
+        roles_reset: resetRoles,
+      };
+    } catch (err: any) {
+      await this.db.rollback(client);
+      this.logger.error(`Reset user organizations error: ${err.message}`);
+      if (err instanceof NotFoundException) throw err;
+      throw new BadRequestException(
+        'ไม่สามารถดำเนินการรีเซ็ตสังกัดและสิทธิ์ของผู้ใช้งานได้',
       );
     }
   }

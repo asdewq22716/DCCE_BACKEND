@@ -11,7 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrganizationsService } from './organizations.service';
 import { AssignUserDto } from './dto/assign-user.dto';
@@ -148,6 +148,12 @@ export class OrganizationsController {
   @ApiOperation({
     summary:
       'ดึงข้อมูลหน่วยงานย่อยทั้งหมด (ระดับ level = 2 และเป็นตัวที่เปิดใช้งาน ที่ยังว่างอยู่หรือของสาขาที่ระบุ)',
+  })
+  @ApiQuery({
+    name: 'branchId',
+    required: false,
+    type: Number,
+    description: 'รหัสสาขาหลัก (ถ้าไม่ระบุ จะดึงเฉพาะหน่วยงานย่อยที่ยังไม่มีสังกัดสาขา)',
   })
   findAllUnits(@Query('branchId') branchId?: string): Promise<OrganizationType[]> {
     return this.organizationsService.findAllUnits(branchId ? parseInt(branchId, 10) : undefined);

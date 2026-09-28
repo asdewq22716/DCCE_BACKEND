@@ -865,7 +865,7 @@ export class OrganizationsService {
       if (dto.permission_ids && dto.permission_ids.length > 0) {
         // กรองเอาเฉพาะ ID ที่ไม่ซ้ำกันเพื่อป้องกัน error ตอน insert
         const uniqueIds = Array.from(new Set(dto.permission_ids));
-        
+
         const values = [];
         const params = [];
         let paramIndex = 1;

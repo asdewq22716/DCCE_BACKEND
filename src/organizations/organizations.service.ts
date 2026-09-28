@@ -1279,9 +1279,8 @@ export class OrganizationsService {
       }
 
       const existing = unitRecord[0];
-      const updateFields = {
+      const updateFields: Record<string, any> = {
         org_name: trimmedUnitName,
-        parent_id: dto.parent_id ?? existing.parent_id,
         sort_order: dto.sort_order ?? existing.sort_order,
         is_active: targetIsActive,
         unit_data_permissions: dto.unit_data_permissions ?? existing.unit_data_permissions,
@@ -1292,6 +1291,11 @@ export class OrganizationsService {
         unit_remark: dto.unit_remark ?? existing.unit_remark,
         updated_at: FncCustom.dateNow(),
       };
+
+      // ถ้า parent_id ถูกส่งมา และค่าไม่ใช่ 0 ให้อัปเดต (ถ้าเป็น 0 หรือไม่ระบุ จะไม่ update field นี้ เพื่อคงค่าเดิมไว้)
+      if (dto.parent_id !== undefined && dto.parent_id !== 0) {
+        updateFields.parent_id = dto.parent_id;
+      }
 
       await this.db.update(
         'organizations',
@@ -1355,6 +1359,33 @@ export class OrganizationsService {
     } catch (err: any) {
       this.logger.error(`Find all units error: ${err.message}`);
       throw new BadRequestException('ไม่สามารถดึงข้อมูลหน่วยงานย่อยได้');
+    }
+  }
+
+  // 1.7 ดึงข้อมูลหน่วยงานย่อยทั้งหมดสำหรับหน้าตั้งค่า (แสดงทุกหน่วยงานย่อย แม้จะมีสังกัดสาขาหรือ parent_id แล้ว)
+  async findAllUnitsForSetting(branchId?: number): Promise<OrganizationType[]> {
+    try {
+      let query = `
+        SELECT org_id, org_name, parent_id, sort_order, level, is_active,
+               unit_data_permissions, unit_view_climate_index, unit_view_ghg_emissions,
+               unit_edit_historical_data, unit_approve_public_data, unit_remark
+        FROM organizations
+        WHERE level = 2 AND is_active = 1
+      `;
+      const params: any[] = [];
+
+      if (branchId) {
+        query += ` AND parent_id = $1`;
+        params.push(branchId);
+      }
+
+      query += ` ORDER BY sort_order ASC, org_id ASC`;
+
+      const units = await this.db.query(query, params);
+      return units;
+    } catch (err: any) {
+      this.logger.error(`Find all units for setting error: ${err.message}`);
+      throw new BadRequestException('ไม่สามารถดึงข้อมูลหน่วยงานย่อยสำหรับหน้าตั้งค่าได้');
     }
   }
 }

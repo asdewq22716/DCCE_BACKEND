@@ -159,6 +159,22 @@ export class OrganizationsController {
     return this.organizationsService.findAllUnits(branchId ? parseInt(branchId, 10) : undefined);
   }
 
+  @ApiTags('Organizations - Units')
+  @Get('units/all')
+  @ApiOperation({
+    summary:
+      'ดึงข้อมูลหน่วยงานย่อยทั้งหมดสำหรับหน้าตั้งค่า (ระดับ level = 2 และเปิดใช้งาน แสดงทั้งหมดรวมหน่วยงานที่มี parent_id สังกัดสาขาแล้ว)',
+  })
+  @ApiQuery({
+    name: 'branchId',
+    required: false,
+    type: Number,
+    description: 'รหัสสาขาหลัก (ถ้าไม่ระบุ จะดึงหน่วยงานย่อยทั้งหมด)',
+  })
+  findAllUnitsForSetting(@Query('branchId') branchId?: string): Promise<OrganizationType[]> {
+    return this.organizationsService.findAllUnitsForSetting(branchId ? parseInt(branchId, 10) : undefined);
+  }
+
   // ==========================================
   // 📂 User Assignment (กำหนดสังกัดหลัก)
   // ==========================================

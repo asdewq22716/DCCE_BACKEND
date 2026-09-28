@@ -1333,6 +1333,69 @@ export class OrganizationsService {
     }
   }
 
+  // 1.5.1 ลบหน่วยงานย่อยเดี่ยว (Soft Delete โดยเซ็ต is_active = 0)
+  async deleteUnit(id: number, context?: AuditContext) {
+    const unitExists = await this.db.select('organizations', {
+      org_id: id,
+      is_active: 1,
+    });
+    if (unitExists.length === 0) {
+      throw new NotFoundException('ไม่พบข้อมูลหน่วยงานย่อยที่ระบุ หรือถูกลบไปแล้ว');
+    }
+    if (unitExists[0].level !== 2) {
+      throw new BadRequestException('รหัสที่ระบุไม่ใช่หน่วยงานย่อย (Level 2)');
+    }
+
+    const client = await this.db.startTransaction();
+
+    try {
+      // ตรวจสอบพนักงานที่ยังผูกสังกัดอยู่ในหน่วยงานนี้
+      const assignedUsers = await this.db.queryTx(
+        client,
+        'SELECT * FROM user_organizations WHERE org_id = $1',
+        [id],
+      );
+
+      if (assignedUsers.length > 0) {
+        throw new BadRequestException(
+          `ไม่สามารถลบหน่วยงานย่อย "${unitExists[0].org_name}" ได้ เนื่องจากยังมีพนักงานผูกสังกัดอยู่ ${assignedUsers.length} คน`,
+        );
+      }
+
+      // ดำเนินการ Soft Delete โดยเซ็ต is_active = 0
+      await this.db.queryTx(
+        client,
+        'UPDATE organizations SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE org_id = $1',
+        [id],
+      );
+
+      // บันทึกกิจกรรมลงตาราง Log
+      await this.auditLog.log(
+        client,
+        {
+          actionType: 'DELETE',
+          moduleName: 'organizations',
+          recordId: id.toString(),
+          oldData: unitExists[0],
+          newData: null,
+          remark: `ลบหน่วยงานย่อย "${unitExists[0].org_name}" (Soft Delete)`,
+        },
+        context,
+      );
+
+      await this.db.commit(client);
+
+      return {
+        message: `ลบหน่วยงานย่อย "${unitExists[0].org_name}" เรียบร้อยแล้ว`,
+        deleted_unit_id: id,
+      };
+    } catch (err: any) {
+      await this.db.rollback(client);
+      this.logger.error(`Delete unit error: ${err.message}`);
+      throw err;
+    }
+  }
+
   // 1.6 ดึงข้อมูลหน่วยงานย่อยทั้งหมด (ที่ยังไม่ถูกเลือก หรือของสาขาตัวเอง)
   async findAllUnits(branchId?: number): Promise<OrganizationType[]> {
     try {
@@ -1362,24 +1425,41 @@ export class OrganizationsService {
     }
   }
 
-  // 1.7 ดึงข้อมูลหน่วยงานย่อยทั้งหมดสำหรับหน้าตั้งค่า (แสดงทุกหน่วยงานย่อย แม้จะมีสังกัดสาขาหรือ parent_id แล้ว)
+  // 1.7 ดึงข้อมูลหน่วยงานย่อยทั้งหมดสำหรับหน้าตั้งค่า (แสดงทุกหน่วยงานย่อย แม้จะมีสังกัดสาขาหรือ parent_id แล้ว พร้อมส่ง user_count)
   async findAllUnitsForSetting(branchId?: number): Promise<OrganizationType[]> {
     try {
       let query = `
-        SELECT org_id, org_name, parent_id, sort_order, level, is_active,
-               unit_data_permissions, unit_view_climate_index, unit_view_ghg_emissions,
-               unit_edit_historical_data, unit_approve_public_data, unit_remark
-        FROM organizations
-        WHERE level = 2 AND is_active = 1
+        SELECT 
+          o.org_id, 
+          o.org_name, 
+          o.parent_id, 
+          o.sort_order, 
+          o.level, 
+          o.is_active,
+          o.unit_data_permissions, 
+          o.unit_view_climate_index, 
+          o.unit_view_ghg_emissions,
+          o.unit_edit_historical_data, 
+          o.unit_approve_public_data, 
+          o.unit_remark,
+          COALESCE(COUNT(uo.user_id), 0)::int AS user_count
+        FROM organizations o
+        LEFT JOIN user_organizations uo ON o.org_id = uo.org_id
+        WHERE o.level = 2 AND o.is_active = 1
       `;
       const params: any[] = [];
 
       if (branchId) {
-        query += ` AND parent_id = $1`;
+        query += ` AND o.parent_id = $1`;
         params.push(branchId);
       }
 
-      query += ` ORDER BY sort_order ASC, org_id ASC`;
+      query += `
+        GROUP BY o.org_id, o.org_name, o.parent_id, o.sort_order, o.level, o.is_active,
+                 o.unit_data_permissions, o.unit_view_climate_index, o.unit_view_ghg_emissions,
+                 o.unit_edit_historical_data, o.unit_approve_public_data, o.unit_remark
+        ORDER BY o.sort_order ASC, o.org_id ASC
+      `;
 
       const units = await this.db.query(query, params);
       return units;

@@ -144,6 +144,19 @@ export class OrganizationsController {
   }
 
   @ApiTags('Organizations - Units')
+  @Delete(['units/:id', 'units/del/:id'])
+  @ApiOperation({ summary: 'ลบหน่วยงานย่อยเดี่ยว (Soft Delete)' })
+  @ApiParam({ name: 'id', example: 145, description: 'ID ของหน่วยงานย่อยที่ต้องการลบ' })
+  deleteUnit(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    const context = {
+      userId: req.user?.userId || null,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+      userAgent: req.headers['user-agent'] || null,
+    };
+    return this.organizationsService.deleteUnit(id, context);
+  }
+
+  @ApiTags('Organizations - Units')
   @Get('units')
   @ApiOperation({
     summary:
